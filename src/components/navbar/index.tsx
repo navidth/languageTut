@@ -14,6 +14,7 @@ export default function NavbarIndex() {
   const [open, setOpen] = useState(false);
   const pathName = usePathname()
   const size = useWindows()
+  
   return (
     <>
       <Navbar

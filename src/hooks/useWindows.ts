@@ -1,24 +1,31 @@
+'use client'
 import { useEffect, useState } from "react"
 
-const useWindows = () => {
-      const [size, setSize] = useState({
-            width: window.innerWidth,
-            height: window.innerHeight
-      })
-      useEffect(() => {
-            const handleResize = () => {
-                  setSize({
-                        width: window.innerWidth,
-                        height: window.innerHeight
-                  })
-            }
-            window.addEventListener('resize', handleResize);
-            return () => {
-                  window.removeEventListener('resize', handleResize);
-            }
-      }, [])
-      return size
+interface WindowSize {
+  width: number
+  height: number
+}
 
+const useWindows = (): WindowSize | null => {
+  const [size, setSize] = useState<WindowSize | null>(null)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+    }
+
+    handleResize() // مقدار اولیه بعد از mount
+    window.addEventListener("resize", handleResize)
+
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [])
+
+  return size
 }
 
 export default useWindows
