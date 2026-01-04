@@ -6,6 +6,7 @@ import React from 'react'
 
 const page = () => {
   return (
+    // W
     <div className='h-screen' >
       <HeroSplit />
       <AboutSection />
