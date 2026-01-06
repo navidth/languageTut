@@ -23,7 +23,7 @@ export default function RootLayout({
         <ThemeModeScript />
       </head>
       <body
-        className={`${iranSans.variable} antialiased`}
+        className={`${iranSans.variable}  antialiased flex flex-col `}
       >
         {children}
       </body>

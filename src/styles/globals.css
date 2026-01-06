@@ -111,6 +111,9 @@
 
   --primary: #3B82F6;
   --primary-foreground: oklch(0.12 0.02 264);
+  
+  --secondary: oklch(27.808% 0.02963 256.871);
+  --secondary-foreground: var(--foreground);
 
   --accent: #34D399;
   --accent-foreground: oklch(0.12 0.02 165);
@@ -126,5 +129,7 @@
 
   --sidebar: oklch(0.18 0.01 264);
 }
-
+body{
+   font-family: var(--font-iran-sans), sans-serif;
+}
 

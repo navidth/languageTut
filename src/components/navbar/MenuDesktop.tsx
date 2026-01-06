@@ -8,7 +8,7 @@ const MenuDesktop = ({ pathName }: { pathName: string }) => {
                         <Link
                               key={item.id}
                               href={item.link}
-                              className={`flex items-center gap-1 ${typeof item.link === "object" || typeof item.link === "string" && pathName && (pathName === item.link) || (pathName.startsWith(item.link) && item.link !== "/") ? " text-blue-600 border-b-2 dark:text-primary" : "text-foreground dark:text-zinc-800"}  hover:text-primary`}
+                              className={`flex items-center gap-1 ${typeof item.link === "object" || typeof item.link === "string" && pathName && (pathName === item.link) || (pathName.startsWith(item.link) && item.link !== "/") ? " text-blue-600 border-b-2 dark:text-primary" : "text-foreground"}  hover:text-primary`}
                         >
                               {item.icon && typeof item.icon === "function" && (
                                     <item.icon />

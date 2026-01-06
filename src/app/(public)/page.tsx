@@ -1,18 +1,22 @@
 import AboutSection from '@/components/landing/AboutSection'
 import HeroSplit from '@/components/landing/HeroSplit'
-import SiteFooter from '@/components/landing/SiteFooter'
 import WhyUsSection from '@/components/landing/WhyUsSection'
-import React from 'react'
+import UserTypeSection from '@/components/landing/UserTypeSection'
+import HowItWorksSection from '@/components/landing/HowItWorksSection'
+import TrustSection from '@/components/landing/TrustSection'
+import FinalCTASection from '@/components/landing/FinalCTASection'
 
 const page = () => {
   return (
-    // W
-    <div className='h-screen' >
+    < >
       <HeroSplit />
-      <AboutSection />
+      <UserTypeSection />
       <WhyUsSection />
-      <SiteFooter />
-    </div>
+      <HowItWorksSection />
+      <TrustSection />
+      <AboutSection />
+      <FinalCTASection/>
+    </>
   )
 }
 

@@ -20,7 +20,7 @@ export default function NavbarIndex() {
       <Navbar
         dir="ltr"
         fluid
-        className={`z-50 bg-[var(--glass)] !important dark:bg-[var(--background)] !important backdrop-blur-2xl shadow-md ${size && size.width > 640 ? "w-full px-3 py-4 sticky top-0 " : "w-[calc(100%-60px)] max-w-[1000px] rounded-full fixed top-[30px] left-1/2 -translate-x-1/2 "}
+        className={`z-50  !important dark:bg-[var(--background)] !important backdrop-blur-2xl shadow-md ${size && size.width > 640 ? "w-full px-3 py-4 sticky top-0 " : "w-[calc(100%-60px)] max-w-[1000px] rounded-full fixed top-[30px] left-1/2 -translate-x-1/2 "}
         `}>
         <Brand />
         <MenuDesktop pathName={pathName} />
