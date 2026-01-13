@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import {
       Footer,
@@ -27,8 +26,7 @@ export default function SiteFooter() {
                               {/* Brand */}
                               <div className="md:col-span-4">
                                     <FooterBrand
-                                          alt="برند"
-                                          src=""
+                                          src="/images/vercel.svg"
                                           href="/"
                                           title="نام برند"
                                           name="نام برند"
