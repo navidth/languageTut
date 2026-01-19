@@ -85,7 +85,6 @@ const AppSidebar: React.FC<Props> = ({ items }) => {
   return (
     <aside
       className={` min-w-52 fixed lg:mt-0 top-0 px-2 right-0  z-50  !important bg-secondary !important backdrop-blur-2xl shadow-md h-screen transition-all duration-300 ease-in-out  border-r border-gray-800`}>
-
       {/* <Link href="/" className="lg:flex items-center justify-center hidden">
         <Image
           width={100} height={100}
@@ -94,7 +93,6 @@ const AppSidebar: React.FC<Props> = ({ items }) => {
         />
 
       </Link> */}
-
       <nav className="flex-1 overflow-y-auto mt-10 ">
         {renderMenuItems(items)}
       </nav>

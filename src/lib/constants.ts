@@ -1,7 +1,7 @@
 import { MenuItems } from "@/types";
 import { BsPersonCircle } from "react-icons/bs";
-import { FaReadme } from "react-icons/fa";
-import { MdCastForEducation, MdHomeWork } from "react-icons/md";
+import { FaChalkboardTeacher, FaReadme } from "react-icons/fa";
+import { MdCastForEducation, MdHomeWork, MdNotificationsActive } from "react-icons/md";
 import { RiArticleFill, RiHome4Fill } from "react-icons/ri";
 
 export const menuItems: MenuItems = [
@@ -42,14 +42,20 @@ export const itemsStudent: MenuItems = [
   {
     id: 3,
     link: "student/educiton",
-    label: "آموزش",
+    label: "دوره‌های من",
     icon: MdCastForEducation
   },
   {
     id: 4,
-    link: "student/blogs",
-    label: "مقاله‌ها",
-    icon: RiArticleFill
+    link: "student/addteach",
+    label: "انتخاب استاد",
+    icon: FaChalkboardTeacher
+  },
+  {
+    id: 5,
+    link: "student/notification",
+    label: "اعلان‌ها",
+    icon: MdNotificationsActive
   },
   {
     id: 5,

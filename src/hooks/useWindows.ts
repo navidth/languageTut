@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from "react"
+import { useLayoutEffect, useState } from "react"
 
 interface WindowSize {
   width: number
@@ -9,7 +9,7 @@ interface WindowSize {
 const useWindows = (): WindowSize | null => {
   const [size, setSize] = useState<WindowSize | null>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const handleResize = () => {
       setSize({
         width: window.innerWidth,
@@ -17,7 +17,7 @@ const useWindows = (): WindowSize | null => {
       })
     }
 
-    handleResize() // مقدار اولیه بعد از mount
+    handleResize()
     window.addEventListener("resize", handleResize)
 
     return () => {
