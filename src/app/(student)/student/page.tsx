@@ -1,6 +1,10 @@
+import StudentDashboardUI from "@/components/dashboard/student/StudentDashboardUI"
+
 const page = () => {
   return (
-    <div>page</div>
+    <div>
+      <StudentDashboardUI />
+    </div>
   )
 }
 
