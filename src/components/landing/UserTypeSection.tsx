@@ -1,84 +1,82 @@
-import { Button } from "flowbite-react";
-import { HiAcademicCap, HiUserGroup, HiArrowLeft } from "react-icons/hi";
+import AuthModalButton from "../auth/AuthModalButton";
+import { HiAcademicCap, HiUserGroup } from "react-icons/hi";
 
 export default function UserTypeSection() {
       return (
-            <section className="py-28 bg-secondary">
-                  <div className="max-w-6xl mx-auto px-6">
-                        <h2 className="text-4xl font-bold text-center mb-4 text-foreground">
+            <section className="bg-secondary py-28">
+                  <div className="mx-auto max-w-6xl px-6">
+                        <h2 className="mb-4 text-center text-4xl font-bold text-foreground">
                               مسیر خودت را انتخاب کن
                         </h2>
-                        <p className="text-center text-muted-foreground mb-16">
-                              تجربه‌ای متفاوت برای زبان‌آموزها و مدرس‌ها
+                        <p className="mb-16 text-center text-muted-foreground">
+                              تجربه ای متفاوت برای زبان آموزها و مدرس ها
                         </p>
 
-                        <div className="grid md:grid-cols-2 gap-10">
-                              {/* Learner Card */}
-                              <div className="relative group rounded-3xl bg-background p-10 border border-border shadow-sm hover:shadow-xl transition">
-                                    <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6">
-                                          <HiAcademicCap className="w-7 h-7" />
+                        <div className="grid gap-10 md:grid-cols-2">
+                              <div className="group relative rounded-3xl border border-border bg-background p-10 shadow-sm transition hover:shadow-xl">
+                                    <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                                          <HiAcademicCap className="h-7 w-7" />
                                     </div>
 
-                                    <h3 className="text-2xl font-semibold mb-3">
-                                          زبان‌آموز هستم
+                                    <h3 className="mb-3 text-2xl font-semibold">
+                                          زبان آموز هستم
                                     </h3>
 
-                                    <p className="text-muted-foreground mb-6">
-                                          مسیر یادگیری شخصی‌سازی‌شده با کمک هوش مصنوعی
+                                    <p className="mb-6 text-muted-foreground">
+                                          مسیر یادگیری شخصی سازی شده با کمک هوش مصنوعی
                                     </p>
 
-                                    <ul className="space-y-3 text-sm text-muted-foreground mb-10">
-                                          <li className="flex gap-2 items-start">
+                                    <ul className="mb-10 space-y-3 text-sm text-muted-foreground">
+                                          <li className="flex items-start gap-2">
                                                 <span className="text-primary">•</span>
                                                 برنامه یادگیری متناسب با هدف شما
                                           </li>
-                                          <li className="flex gap-2 items-start">
+                                          <li className="flex items-start gap-2">
                                                 <span className="text-primary">•</span>
                                                 انتخاب مدرس بر اساس سطح و نیاز
                                           </li>
-                                          <li className="flex gap-2 items-start">
+                                          <li className="flex items-start gap-2">
                                                 <span className="text-primary">•</span>
                                                 تحلیل پیشرفت و پیشنهاد هوشمند
                                           </li>
                                     </ul>
 
-                                    <Button pill className="w-full group">
+                                    <AuthModalButton className="w-full group" fullWidth>
                                           شروع یادگیری
-                                    </Button>
+                                    </AuthModalButton>
                               </div>
 
-                              {/* Teacher Card */}
-                              <div className="relative group rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-800 text-white p-10 shadow-lg hover:shadow-2xl transition">
-                                    <div className="w-14 h-14 rounded-2xl bg-white/10 text-white flex items-center justify-center mb-6">
-                                          <HiUserGroup className="w-7 h-7" />
+                              <div className="group relative rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-800 p-10 text-white shadow-lg transition hover:shadow-2xl">
+                                    <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white">
+                                          <HiUserGroup className="h-7 w-7" />
                                     </div>
 
-                                    <h3 className="text-2xl font-semibold mb-3">
+                                    <h3 className="mb-3 text-2xl font-semibold">
                                           مدرس هستم
                                     </h3>
 
-                                    <p className="text-zinc-300 mb-6">
-                                          کلاس‌ها، شاگردان و درآمدت را هوشمند مدیریت کن
+                                    <p className="mb-6 text-zinc-300">
+                                          کلاس ها، شاگردان و درآمدت را هوشمند مدیریت کن
                                     </p>
 
-                                    <ul className="space-y-3 text-sm text-zinc-300 mb-10">
-                                          <li className="flex gap-2 items-start">
+                                    <ul className="mb-10 space-y-3 text-sm text-zinc-300">
+                                          <li className="flex items-start gap-2">
                                                 <span className="text-white">•</span>
                                                 جذب شاگرد بدون واسطه
                                           </li>
-                                          <li className="flex gap-2 items-start">
+                                          <li className="flex items-start gap-2">
                                                 <span className="text-white">•</span>
-                                                پنل مدیریت کلاس‌ها
+                                                پنل مدیریت کلاس ها
                                           </li>
-                                          <li className="flex gap-2 items-start">
+                                          <li className="flex items-start gap-2">
                                                 <span className="text-white">•</span>
                                                 گزارش عملکرد و درآمد شفاف
                                           </li>
                                     </ul>
 
-                                    <Button pill color="light" className="w-full">
+                                    <AuthModalButton color="light" className="w-full" fullWidth>
                                           شروع تدریس
-                                    </Button>
+                                    </AuthModalButton>
                               </div>
                         </div>
                   </div>

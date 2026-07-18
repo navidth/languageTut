@@ -1,53 +1,55 @@
-"use client"
-import { menuItems } from "@/lib/constants";
-import { Button, DarkThemeToggle, Navbar } from "flowbite-react";
-import Brand from "./Brand";
+"use client";
+
+import AuthModalButton from "@/components/auth/AuthModalButton";
+import useWindows from "@/hooks/useWindows";
+import { DarkThemeToggle, Navbar } from "flowbite-react";
 import { useState } from "react";
 import { HiOutlineMenu } from "react-icons/hi";
-import MobileMenu from "./MobileMenu";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Brand from "./Brand";
 import MenuDesktop from "./MenuDesktop";
-import useWindows from "@/hooks/useWindows";
+import MobileMenu from "./MobileMenu";
 
 export default function NavbarIndex() {
   const [open, setOpen] = useState(false);
-  const pathName = usePathname()
-  const size = useWindows()
-  
+  const pathName = usePathname();
+  const size = useWindows();
+
   return (
     <>
       <Navbar
         dir="ltr"
         fluid
-        className={`z-50  !important dark:bg-[var(--background)] !important backdrop-blur-2xl shadow-md ${size && size.width > 640 ? "w-full px-3 py-4 sticky top-0 " : "w-[calc(100%-60px)] max-w-[1000px] rounded-full fixed top-[30px] left-1/2 -translate-x-1/2 "}
-        `}>
+        className={`z-50 !important backdrop-blur-2xl shadow-md dark:bg-[var(--background)] !important ${
+          size && size.width > 640
+            ? "sticky top-0 w-full px-3 py-4"
+            : "fixed top-[30px] left-1/2 w-[calc(100%-60px)] max-w-[1000px] -translate-x-1/2 rounded-full"
+        }`}
+      >
         <Brand />
         <MenuDesktop pathName={pathName} />
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 mx-3">
-          <DarkThemeToggle className="cursor-pointer focus:outline-0 focus:ring-0  duration-300 " />
+        <div className="mx-3 flex items-center gap-2">
+          <DarkThemeToggle className="cursor-pointer duration-300 focus:outline-0 focus:ring-0" />
 
-          <Button pill className="hidden md:flex cursor-pointer ">
+          <AuthModalButton className="hidden cursor-pointer md:flex">
             شروع یادگیری
-          </Button>
+          </AuthModalButton>
 
-          {/* Mobile Toggle */}
           <button
             onClick={() => setOpen(true)}
-            className="md:hidden p-2 text-zinc-800   "
+            className="p-2 text-zinc-800 md:hidden"
           >
             <HiOutlineMenu size={24} />
           </button>
         </div>
+      </Navbar>
 
-      </Navbar >
-
-      {/* Mobile Fullscreen Menu */}
-      < MobileMenu pathName={pathName} open={open} onClose={() => setOpen(false)
-      } />
+      <MobileMenu
+        pathName={pathName}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </>
   );
 }
-
