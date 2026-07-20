@@ -158,7 +158,7 @@ export default function AuthModalButton({
         onClose={() => setOpen(false)}
         dir="rtl"
       >
-        <ModalHeader className="justify-between">
+        <ModalHeader className="justify-between w-full border-b-red-500">
           {isLogin ? "ورود به حساب کاربری" : "ثبت نام"}
         </ModalHeader>
         <ModalBody>

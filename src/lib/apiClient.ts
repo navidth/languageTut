@@ -1,21 +1,20 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const API_BASE_URL = "/backend";
-export const BACKEND_BASE_URL = "http://2.144.27.2:8000";
+export const BACKEND_BASE_URL = "http://2.144.27.2:8000/api";
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: BACKEND_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 const refreshClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: BACKEND_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -38,7 +37,7 @@ async function getFreshAccessToken() {
 
   if (!refreshRequest) {
     refreshRequest = refreshClient
-      .post<{ access: string }>("/api/auth/token/refresh/", {
+      .post<{ access: string }>("/auth/token/refresh/", {
         refresh: refreshToken,
       })
       .then((response) => {
@@ -76,7 +75,11 @@ apiClient.interceptors.response.use(
 
     const originalRequest = error.config as RetryableRequestConfig | undefined;
 
-    if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
+    if (
+      error.response?.status !== 401 ||
+      !originalRequest ||
+      originalRequest._retry
+    ) {
       return Promise.reject(error);
     }
 
