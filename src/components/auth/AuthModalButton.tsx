@@ -2,29 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AxiosError } from "axios";
-import {
-  Alert,
-  Button,
-  Label,
-  Modal,
-  ModalBody,
-  ModalHeader,
-  Select,
-  Spinner,
-  TextInput,
-} from "flowbite-react";
-import {
-  authApi,
-  CurrentLevel,
-  LoginRequest,
-  RegisterRequest,
-  UserRole,
-} from "@/lib/auth";
+import { Alert, Button, Label, Modal, ModalBody, ModalHeader, Select, Spinner, TextInput } from "flowbite-react";
+import { CurrentLevel, UserRole } from "@/lib/auth";
+import { useAppDispatch } from "@/store/hooks";
+import { login, register } from "@/store/authSlice";
 
-type AuthMode = "login" | "register";
-
-type AuthModalButtonProps = {
+type AuthMode = "login" | "register" | "forgot";
+type Props = {
   children?: React.ReactNode;
   className?: string;
   color?: string;
@@ -34,35 +18,7 @@ type AuthModalButtonProps = {
 };
 
 const levels: CurrentLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-
-function getDashboardPath(role: UserRole) {
-  if (role === "teacher") {
-    return "/teacher";
-  }
-
-  return "/student";
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof AxiosError) {
-    const detail = error.response?.data?.detail;
-
-    if (typeof detail === "string") {
-      return detail;
-    }
-
-    if (error.response?.data && typeof error.response.data === "object") {
-      return Object.entries(error.response.data)
-        .map(
-          ([key, value]) =>
-            `${key}: ${Array.isArray(value) ? value.join("، ") : String(value)}`,
-        )
-        .join(" | ");
-    }
-  }
-
-  return "خطایی رخ داد. لطفا دوباره تلاش کنید.";
-}
+const dashboardPath = (role: UserRole) => role === "teacher" ? "/teacher" : "/student";
 
 export default function AuthModalButton({
   children = "ورود",
@@ -71,7 +27,8 @@ export default function AuthModalButton({
   pill = true,
   fullWidth,
   onOpened,
-}: AuthModalButtonProps) {
+}: Props) {
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>("login");
@@ -81,59 +38,22 @@ export default function AuthModalButton({
   const [currentLevel, setCurrentLevel] = useState<CurrentLevel>("A1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const isLogin = mode === "login";
-
-  const handleOpen = () => {
-    setOpen(true);
-    setError("");
-    setSuccess("");
-    onOpened?.();
-  };
-
-  const resetMessages = () => {
-    setError("");
-    setSuccess("");
-  };
-
-  const switchMode = (nextMode: AuthMode) => {
-    setMode(nextMode);
-    resetMessages();
-  };
+  const switchMode = (next: AuthMode) => { setMode(next); setError(""); };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (mode === "forgot") return;
     setLoading(true);
-    resetMessages();
-
+    setError("");
     try {
-      if (isLogin) {
-        const payload: LoginRequest = { email, password };
-        const data = await authApi.login(payload);
-
-        localStorage.setItem("accessToken", data.access);
-        localStorage.setItem("refreshToken", data.refresh);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        setOpen(false);
-        router.push(getDashboardPath(data.user.role));
-        return;
-      }
-
-      const payload: RegisterRequest = {
-        email,
-        password,
-        full_name: fullName,
-        current_level: currentLevel,
-      };
-
-      await authApi.register(payload);
-      setSuccess("ثبت نام با موفقیت انجام شد. حالا وارد حساب کاربری شوید.");
-      setMode("login");
-      setPassword("");
-    } catch (err) {
-      setError(getErrorMessage(err));
+      const action = mode === "login"
+        ? await dispatch(login({ email, password })).unwrap()
+        : await dispatch(register({ email, password, full_name: fullName, current_level: currentLevel })).unwrap();
+      setOpen(false);
+      router.push(dashboardPath(action.role));
+    } catch (reason) {
+      setError(String(reason));
     } finally {
       setLoading(false);
     }
@@ -141,101 +61,37 @@ export default function AuthModalButton({
 
   return (
     <>
-      <Button
-        color={color}
-        pill={pill}
-        className={className}
-        fullSized={fullWidth}
-        onClick={handleOpen}
-      >
+      <Button color={color} pill={pill} className={className} fullSized={fullWidth} onClick={() => { setOpen(true); setError(""); onOpened?.(); }}>
         {children}
       </Button>
-
-      <Modal
-        dismissible
-        show={open}
-        size="md"
-        onClose={() => setOpen(false)}
-        dir="rtl"
-      >
-        <ModalHeader className="justify-between w-full border-b-red-500">
-          {isLogin ? "ورود به حساب کاربری" : "ثبت نام"}
+      <Modal dismissible show={open} size="md" onClose={() => setOpen(false)} dir="rtl">
+        <ModalHeader>
+          {mode === "login" ? "ورود به حساب کاربری" : mode === "register" ? "ساخت حساب کاربری" : "بازیابی رمز عبور"}
         </ModalHeader>
         <ModalBody>
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {error && <Alert color="failure">{error}</Alert>}
-            {success && <Alert color="success">{success}</Alert>}
-
-            {!isLogin && (
-              <div>
-                <Label htmlFor="fullName" className="mb-2 block">
-                  نام و نام خانوادگی
-                </Label>
-                <TextInput
-                  id="fullName"
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                  required={!isLogin}
-                  placeholder="نام کامل"
-                />
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="email" className="mb-2 block">
-                ایمیل
-              </Label>
-              <TextInput
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                placeholder="name@example.com"
-              />
+          {mode === "forgot" ? (
+            <div className="space-y-4">
+              <Alert color="warning">سرویس بازیابی رمز عبور هنوز در API سرور ارائه نشده است. پس از اضافه‌شدن endpoint، این فرم فعال می‌شود.</Alert>
+              <Button color="light" className="w-full" onClick={() => switchMode("login")}>بازگشت به ورود</Button>
             </div>
-
-            <div>
-              <Label htmlFor="password" className="mb-2 block">
-                رمز عبور
-              </Label>
-              <TextInput
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                minLength={isLogin ? 1 : 8}
-                placeholder={isLogin ? "رمز عبور" : "حداقل ۸ کاراکتر"}
-              />
-            </div>
-
-            {!isLogin && (
-              <div>
-                <Label htmlFor="currentLevel" className="mb-2 block">
-                  سطح زبان
-                </Label>
-                <Select
-                  id="currentLevel"
-                  value={currentLevel}
-                  onChange={(event) =>
-                    setCurrentLevel(event.target.value as CurrentLevel)
-                  }
-                >
-                  {levels.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </Select>
+          ) : (
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              {error && <Alert color="failure">{error}</Alert>}
+              {mode === "register" && (
+                <div><Label htmlFor="fullName" className="mb-2 block">نام و نام خانوادگی</Label><TextInput id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
+              )}
+              <div><Label htmlFor="email" className="mb-2 block">ایمیل</Label><TextInput id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="name@example.com" autoComplete="email" /></div>
+              <div><Label htmlFor="password" className="mb-2 block">رمز عبور</Label><TextInput id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={mode === "register" ? 8 : 1} autoComplete={mode === "login" ? "current-password" : "new-password"} /></div>
+              {mode === "register" && (
+                <div><Label htmlFor="level" className="mb-2 block">سطح زبان</Label><Select id="level" value={currentLevel} onChange={(e) => setCurrentLevel(e.target.value as CurrentLevel)}>{levels.map((level) => <option key={level}>{level}</option>)}</Select></div>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>{loading && <Spinner size="sm" className="ml-2" />}{mode === "login" ? "ورود" : "ثبت‌نام و ورود"}</Button>
+              <div className="flex justify-between text-sm">
+                <button type="button" className="text-blue-600" onClick={() => switchMode(mode === "login" ? "register" : "login")}>{mode === "login" ? "ساخت حساب" : "حساب دارم"}</button>
+                {mode === "login" && <button type="button" className="text-blue-600" onClick={() => switchMode("forgot")}>رمز عبور را فراموش کرده‌ام</button>}
               </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Spinner size="sm" className="ml-2" />}
-              {isLogin ? "ورود" : "ثبت نام"}
-            </Button>
-          </form>
+            </form>
+          )}
         </ModalBody>
       </Modal>
     </>

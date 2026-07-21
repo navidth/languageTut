@@ -13,12 +13,18 @@ export const menuItems: MenuItems = [
   },
   {
     id: 2,
+    link: "/courses",
+    label: "دوره‌ها",
+    icon: MdCastForEducation,
+  },
+  {
+    id: 3,
     link: "/aboutUs",
     label: "درباره ما",
     icon: FaReadme,
   },
   {
-    id: 3,
+    id: 4,
     link: "/blogs",
     label: "مقاله‌ها",
     icon: RiArticleFill,

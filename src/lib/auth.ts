@@ -37,6 +37,8 @@ export type RegisterResponse = {
   current_level?: CurrentLevel;
 };
 
+export type ForgotPasswordRequest = { email: string };
+
 export type UpdateProfileRequest = {
   email: string;
   full_name: string;
@@ -68,7 +70,7 @@ export const authApi = {
   },
 
   updateMe: async (data: UpdateProfileRequest) => {
-    const response = await apiClient.put<User>("/api/auth/me/", data);
+    const response = await apiClient.patch<User>("/api/auth/me/", data);
     return response.data;
   },
 

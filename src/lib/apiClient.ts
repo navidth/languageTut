@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-export const BACKEND_BASE_URL = "http://2.144.27.2:8000/api";
+export const BACKEND_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://2.144.27.2:8000";
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -23,6 +24,7 @@ const refreshClient = axios.create({
 let refreshRequest: Promise<string> | null = null;
 
 function clearAuthStorage() {
+  if (typeof window === "undefined") return;
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("user");
@@ -37,7 +39,7 @@ async function getFreshAccessToken() {
 
   if (!refreshRequest) {
     refreshRequest = refreshClient
-      .post<{ access: string }>("/auth/token/refresh/", {
+      .post<{ access: string }>("/api/auth/token/refresh/", {
         refresh: refreshToken,
       })
       .then((response) => {
