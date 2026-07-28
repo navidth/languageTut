@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { authApi, LoginRequest, RegisterRequest, User } from "@/lib/auth";
+import { clearAuthStorage } from "@/lib/apiClient";
 
 type AuthState = {
   user: User | null;
@@ -47,13 +48,19 @@ export const register = createAsyncThunk("auth/register", async (payload: Regist
 
 export const loadMe = createAsyncThunk("auth/me", async (_, api) => {
   try {
-    if (!localStorage.getItem("accessToken")) return null;
     const user = await authApi.getMe();
     localStorage.setItem("user", JSON.stringify(user));
+    document.cookie = `role=${encodeURIComponent(user.role)}; path=/; SameSite=Lax`;
     return user;
   } catch (error) {
+    clearAuthStorage();
     return api.rejectWithValue(errorMessage(error));
   }
+}, {
+  condition: (_, { getState }) => {
+    const state = getState() as { auth: AuthState };
+    return state.auth.status !== "loading";
+  },
 });
 
 const authSlice = createSlice({
@@ -63,10 +70,8 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null;
       state.status = "idle";
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      document.cookie = "role=; path=/; Max-Age=0; SameSite=Lax";
+      state.error = null;
+      clearAuthStorage();
     },
   },
   extraReducers(builder) {
@@ -81,10 +86,13 @@ const authSlice = createSlice({
       .addCase(loadMe.pending, pending)
       .addCase(login.fulfilled, (state, action) => { state.user = action.payload; state.status = "authenticated"; })
       .addCase(register.fulfilled, (state, action) => { state.user = action.payload; state.status = "authenticated"; })
-      .addCase(loadMe.fulfilled, (state, action) => { state.user = action.payload; state.status = action.payload ? "authenticated" : "idle"; })
+      .addCase(loadMe.fulfilled, (state, action) => { state.user = action.payload; state.status = "authenticated"; })
       .addCase(login.rejected, rejected)
       .addCase(register.rejected, rejected)
-      .addCase(loadMe.rejected, rejected);
+      .addCase(loadMe.rejected, (state, action) => {
+        state.user = null;
+        rejected(state, action);
+      });
   },
 });
 

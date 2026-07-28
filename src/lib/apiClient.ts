@@ -23,11 +23,16 @@ const refreshClient = axios.create({
 
 let refreshRequest: Promise<string> | null = null;
 
-function clearAuthStorage() {
+export function clearAuthStorage() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
+  document.cookie = "role=; path=/; Max-Age=0; SameSite=Lax";
+  document.cookie = "access_token=; path=/; Max-Age=0; SameSite=Lax";
+  document.cookie = "refresh_token=; path=/; Max-Age=0; SameSite=Lax";
 }
 
 async function getFreshAccessToken() {
@@ -93,7 +98,12 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       clearAuthStorage();
-      window.location.href = "/";
+      // A failed authentication check on the landing page must settle there.
+      // Navigating to "/" while already there would remount the page and start
+      // the same check again.
+      if (window.location.pathname !== "/") {
+        window.location.assign("/");
+      }
       return Promise.reject(refreshError);
     }
   },

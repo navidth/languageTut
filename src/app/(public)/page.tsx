@@ -5,10 +5,11 @@ import UserTypeSection from '@/components/landing/UserTypeSection'
 import HowItWorksSection from '@/components/landing/HowItWorksSection'
 import TrustSection from '@/components/landing/TrustSection'
 import FinalCTASection from '@/components/landing/FinalCTASection'
+import LandingAuthCheck from '@/components/landing/LandingAuthCheck'
 
 const page = () => {
   return (
-    < >
+    <LandingAuthCheck>
       <HeroSplit />
       <UserTypeSection />
       <WhyUsSection />
@@ -16,7 +17,7 @@ const page = () => {
       <TrustSection />
       <AboutSection />
       <FinalCTASection/>
-    </>
+    </LandingAuthCheck>
   )
 }
 
