@@ -21,3 +21,7 @@ export const itemsStudent: MenuItems = [
   { id: 7, link: "/student/tests", label: "تمرین‌های تستی", icon: MdQuiz },
   { id: 8, link: "/student/profile", label: "پروفایل", icon: BsPersonCircle },
 ];
+
+export const itemsTeacher: MenuItems = [
+  { id: 1, link: "/teacher", label: "داشبورد", icon: RiHome4Fill },
+];

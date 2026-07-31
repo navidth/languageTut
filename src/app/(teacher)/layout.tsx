@@ -1,0 +1,34 @@
+"use client";
+import "@/styles/globals.css";
+import useWindows from "@/hooks/useWindows";
+import AppSidebar from "@/components/dashboard/navbar/AppSidebar";
+import { itemsTeacher } from "@/lib/constants";
+import NavbarMobile from "@/components/dashboard/navbar/NavbarMobile";
+import AppHeader from "@/components/dashboard/navbar/AppHeader";
+
+export default function TeacherLayout({ children }: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <ClientLayout>
+      {children}
+    </ClientLayout>
+  );
+}
+
+function ClientLayout({ children }: { children: React.ReactNode }) {
+  const size = useWindows();
+  return (
+    <main className="sm:flex">
+      {size && size.width > 640 ? (
+        <AppSidebar items={itemsTeacher} />
+      ) : size && <NavbarMobile items={itemsTeacher} />}
+      <div className="flex-1 transition-all duration-300 ease-in-out sm:mr-[calc(var(--spacing)*52)]">
+        <AppHeader />
+        <div className="p-4 mx-auto md:p-6">
+          {children}
+        </div>
+      </div>
+    </main>
+  );
+}
