@@ -19,7 +19,7 @@ Create a `production` environment in the GitHub repository with these secrets:
 The production environment currently uses:
 
 ```dotenv
-NEXT_PUBLIC_API_BASE_URL=http://2.144.27.2:8001
+NEXT_PUBLIC_API_BASE_URL=http://2.144.27.2:8000
 NEXT_PUBLIC_SITE_URL=http://2.144.27.2:3000
 APP_PORT=3000
 ```
