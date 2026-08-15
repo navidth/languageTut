@@ -16,10 +16,22 @@ export const metadata: Metadata = {
   openGraph: { title: "دوره‌های آنلاین زبان و آیلتس | ExamificatioN", description: "دوره مناسب سطح زبان خود را پیدا کنید.", url: "/courses", type: "website" },
 };
 
+<<<<<<< HEAD
 async function getCourses(page: number): Promise<PaginatedCourses> {
   const response = await fetch(`${BACKEND_BASE_URL}/api/courses/?page=${page}`, { next: { revalidate: 300 } });
   if (!response.ok) throw new Error("دریافت دوره‌ها از سرور ناموفق بود.");
   return response.json();
+=======
+async function getCourses(): Promise<PaginatedCourses> {
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/courses/`, { next: { revalidate: 300 } });
+    if (!response.ok) throw new Error("دریافت دوره‌ها از سرور ناموفق بود.");
+    return response.json();
+  } catch {
+    // Keep builds and cached pages available while the API is restarting.
+    return { count: 0, next: null, previous: null, results: [] };
+  }
+>>>>>>> 7977588fbd4c9570c5ea85d829fc91dba73d5896
 }
 
 export default async function CoursesPage({ searchParams }: Props) {

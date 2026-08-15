@@ -1,0 +1,83 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_KEY: ${{ secrets.DEPLOY_HOST_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Create release directory
+        run: ssh -i ~/.ssh/deploy_key cloud-admin@2.144.27.2 "mkdir -p ~/apps/language-tut-main"
+
+      - name: Upload application
+        run: |
+          rsync -az --delete \
+            --exclude .git \
+            --exclude .env \
+            --exclude .next \
+            --exclude node_modules \
+            -e 'ssh -i ~/.ssh/deploy_key' \
+            ./ "cloud-admin@2.144.27.2:~/apps/language-tut-main/"
+
+      - name: Upload production environment
+        env:
+          PROD_ENV_B64: ${{ secrets.PROD_ENV_B64 }}
+        run: |
+          test -n "$PROD_ENV_B64"
+          printf '%s' "$PROD_ENV_B64" | base64 --decode | \
+            ssh -i ~/.ssh/deploy_key cloud-admin@2.144.27.2 \
+              "umask 077; cat > ~/apps/language-tut-main/.env"
+
+      - name: Deploy container
+        run: |
+          ssh -i ~/.ssh/deploy_key cloud-admin@2.144.27.2 \
+            "cd ~/apps/language-tut-main && docker compose -p language-tut-main -f docker-compose.prod.yml up -d --build --remove-orphans"
+
+      - name: Wait for frontend
+        run: |
+          ssh -i ~/.ssh/deploy_key cloud-admin@2.144.27.2 \
+            'cd ~/apps/language-tut-main && for attempt in $(seq 1 30); do container_id=$(docker compose -p language-tut-main -f docker-compose.prod.yml ps -q frontend); status=$(docker inspect --format="{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}" "$container_id" 2>/dev/null || true); [ "$status" = healthy ] && exit 0; [ "$status" = exited ] && break; sleep 2; done; docker compose -p language-tut-main -f docker-compose.prod.yml logs frontend; exit 1'
+
+      - name: Show deployment status
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key cloud-admin@2.144.27.2 \
+            "cd ~/apps/language-tut-main && docker compose -p language-tut-main -f docker-compose.prod.yml ps"
