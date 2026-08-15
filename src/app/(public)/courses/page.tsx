@@ -11,9 +11,14 @@ export const metadata: Metadata = {
 };
 
 async function getCourses(): Promise<PaginatedCourses> {
-  const response = await fetch(`${BACKEND_BASE_URL}/api/courses/`, { next: { revalidate: 300 } });
-  if (!response.ok) throw new Error("دریافت دوره‌ها از سرور ناموفق بود.");
-  return response.json();
+  try {
+    const response = await fetch(`${BACKEND_BASE_URL}/api/courses/`, { next: { revalidate: 300 } });
+    if (!response.ok) throw new Error("دریافت دوره‌ها از سرور ناموفق بود.");
+    return response.json();
+  } catch {
+    // Keep builds and cached pages available while the API is restarting.
+    return { count: 0, next: null, previous: null, results: [] };
+  }
 }
 
 export default async function CoursesPage() {
