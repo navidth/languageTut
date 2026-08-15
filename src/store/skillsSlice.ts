@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
+import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/apiErrors";
 import {
   type PaginatedSkills,
   type PatchedSkillRequest,
@@ -44,31 +44,6 @@ const initialState: SkillsState = {
   successMessage: null,
 };
 
-function apiError(error: unknown) {
-  const response = (error as AxiosError<Record<string, unknown>>).response;
-  const data = response?.data;
-
-  if (response?.status === 401) {
-    return "برای مشاهده مهارت‌ها ابتدا وارد حساب کاربری شوید.";
-  }
-  if (response?.status === 403) {
-    return "شما اجازه انجام این عملیات را ندارید.";
-  }
-  if (data && typeof data.detail === "string") {
-    return data.detail;
-  }
-  if (data) {
-    const firstValue = Object.values(data)[0];
-    if (typeof firstValue === "string") return firstValue;
-    if (Array.isArray(firstValue) && typeof firstValue[0] === "string") {
-      return firstValue[0];
-    }
-  }
-  return error instanceof Error
-    ? error.message
-    : "ارتباط با سرویس مهارت‌ها ناموفق بود.";
-}
-
 type ThunkConfig = {
   state: { skills: SkillsState };
   rejectValue: string;
@@ -84,7 +59,7 @@ export const fetchSkills = createAsyncThunk<
     try {
       return await skillsApi.list(page);
     } catch (error) {
-      return api.rejectWithValue(apiError(error));
+      return api.rejectWithValue(getApiErrorMessage(error, "دریافت مهارت‌ها ناموفق بود."));
     }
   },
   {
@@ -99,7 +74,7 @@ export const fetchSkill = createAsyncThunk<Skill, number, ThunkConfig>(
     try {
       return await skillsApi.get(id);
     } catch (error) {
-      return api.rejectWithValue(apiError(error));
+      return api.rejectWithValue(getApiErrorMessage(error, "دریافت مهارت ناموفق بود."));
     }
   },
   {
@@ -119,7 +94,7 @@ export const createSkill = createAsyncThunk<Skill, SkillRequest, ThunkConfig>(
     try {
       return await skillsApi.create(payload);
     } catch (error) {
-      return api.rejectWithValue(apiError(error));
+      return api.rejectWithValue(getApiErrorMessage(error, "ایجاد مهارت ناموفق بود."));
     }
   },
 );
@@ -132,7 +107,7 @@ export const replaceSkill = createAsyncThunk<
   try {
     return await skillsApi.update(id, data);
   } catch (error) {
-    return api.rejectWithValue(apiError(error));
+    return api.rejectWithValue(getApiErrorMessage(error, "ویرایش مهارت ناموفق بود."));
   }
 });
 
@@ -144,7 +119,7 @@ export const updateSkill = createAsyncThunk<
   try {
     return await skillsApi.patch(id, data);
   } catch (error) {
-    return api.rejectWithValue(apiError(error));
+    return api.rejectWithValue(getApiErrorMessage(error, "ویرایش مهارت ناموفق بود."));
   }
 });
 
@@ -155,7 +130,7 @@ export const deleteSkill = createAsyncThunk<number, number, ThunkConfig>(
       await skillsApi.remove(id);
       return id;
     } catch (error) {
-      return api.rejectWithValue(apiError(error));
+      return api.rejectWithValue(getApiErrorMessage(error, "حذف مهارت ناموفق بود."));
     }
   },
 );
@@ -241,21 +216,21 @@ const skillsSlice = createSlice({
         state.items.push(action.payload);
         state.items.sort((a, b) => a.order - b.order);
         state.count += 1;
-        state.successMessage = "مهارت با موفقیت ایجاد شد.";
+        state.successMessage = getApiSuccessMessage(201, "مهارت با موفقیت ایجاد شد.");
       })
       .addCase(createSkill.rejected, mutationRejected)
       .addCase(replaceSkill.pending, mutationPending)
       .addCase(replaceSkill.fulfilled, (state, action) => {
         state.mutationStatus = "succeeded";
         updateStoredSkill(state, action.payload);
-        state.successMessage = "مهارت با موفقیت ویرایش شد.";
+        state.successMessage = getApiSuccessMessage(200, "مهارت با موفقیت ویرایش شد.");
       })
       .addCase(replaceSkill.rejected, mutationRejected)
       .addCase(updateSkill.pending, mutationPending)
       .addCase(updateSkill.fulfilled, (state, action) => {
         state.mutationStatus = "succeeded";
         updateStoredSkill(state, action.payload);
-        state.successMessage = "مهارت با موفقیت ویرایش شد.";
+        state.successMessage = getApiSuccessMessage(200, "مهارت با موفقیت ویرایش شد.");
       })
       .addCase(updateSkill.rejected, mutationRejected)
       .addCase(deleteSkill.pending, mutationPending)
@@ -266,7 +241,7 @@ const skillsSlice = createSlice({
         );
         if (state.selected?.id === action.payload) state.selected = null;
         state.count = Math.max(0, state.count - 1);
-        state.successMessage = "مهارت با موفقیت حذف شد.";
+        state.successMessage = getApiSuccessMessage(204, "مهارت با موفقیت حذف شد.");
       })
       .addCase(deleteSkill.rejected, mutationRejected);
   },

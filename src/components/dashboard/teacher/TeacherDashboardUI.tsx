@@ -20,10 +20,11 @@ export default function TeacherDashboardUI() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">پنل مدرس</h1>
-        <p className="mt-2 text-muted-foreground">
+    <section className="mx-auto max-w-6xl space-y-6">
+      <div className="page-hero rounded-3xl p-7">
+        <p className="page-hero-muted text-sm">مدیریت آموزش</p>
+        <h1 className="mt-2 text-3xl font-black">پنل مدرس</h1>
+        <p className="page-hero-muted mt-2">
           {user
             ? `خوش آمدید، ${user.full_name}`
             : "برای دسترسی به پنل مدرس وارد حساب کاربری خود شوید."}
@@ -31,7 +32,7 @@ export default function TeacherDashboardUI() {
       </div>
 
       {user && (
-        <div className="rounded-xl border border-secondary/40 bg-secondary/5 p-6 space-y-3">
+        <div className="surface-card space-y-3 rounded-3xl p-6">
           <h2 className="text-lg font-semibold">اطلاعات حساب</h2>
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
@@ -40,7 +41,7 @@ export default function TeacherDashboardUI() {
             </div>
             <div>
               <dt className="text-sm text-muted-foreground">ایمیل</dt>
-              <dd className="font-medium">{user.email}</dd>
+              <dd className="font-medium" dir="ltr">{user.email}</dd>
             </div>
             <div>
               <dt className="text-sm text-muted-foreground">نقش</dt>
@@ -55,6 +56,6 @@ export default function TeacherDashboardUI() {
           </dl>
         </div>
       )}
-    </div>
+    </section>
   );
 }

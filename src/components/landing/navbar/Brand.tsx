@@ -1,27 +1,12 @@
-import { NavbarBrand } from "flowbite-react"
+import { NavbarBrand } from "flowbite-react";
+import BrandMark from "@/components/ui/BrandMark";
 
 const Brand = () => {
-      return (
-            <NavbarBrand href="/" className="mx-3">
-                  {/* <Image
-              src="/favicon.svg"
-              width={28}
-              height={28}
-              className="mr-3"
-              alt="Logo"
-            /> */}
-                  <span
-                        className="
-                self-center 
-                whitespace-nowrap 
-                text-xl 
-                font-bold 
-                text-zinc-800
-              ">
-                        LOGO
-                  </span>
-            </NavbarBrand >
-      )
-}
+  return (
+    <NavbarBrand as="div" className="mx-1 sm:mx-3">
+      <BrandMark variant="wordmark" />
+    </NavbarBrand>
+  );
+};
 
-export default Brand
+export default Brand;

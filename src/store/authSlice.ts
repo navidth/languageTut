@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { authApi, LoginRequest, RegisterRequest, User } from "@/lib/auth";
 import { clearAuthStorage } from "@/lib/apiClient";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 
 type AuthState = {
   user: User | null;
@@ -17,10 +18,6 @@ function persistSession(access: string, refresh: string, user: User) {
   document.cookie = `role=${encodeURIComponent(user.role)}; path=/; SameSite=Lax`;
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "خطایی در ارتباط با سرور رخ داد.";
-}
-
 export const login = createAsyncThunk("auth/login", async (payload: LoginRequest, api) => {
   try {
     const session = await authApi.login(payload);
@@ -29,7 +26,7 @@ export const login = createAsyncThunk("auth/login", async (payload: LoginRequest
     localStorage.setItem("user", JSON.stringify(user));
     return user;
   } catch (error) {
-    return api.rejectWithValue(errorMessage(error));
+    return api.rejectWithValue(getApiErrorMessage(error, "ورود به حساب کاربری ناموفق بود."));
   }
 });
 
@@ -42,7 +39,7 @@ export const register = createAsyncThunk("auth/register", async (payload: Regist
     localStorage.setItem("user", JSON.stringify(user));
     return user;
   } catch (error) {
-    return api.rejectWithValue(errorMessage(error));
+    return api.rejectWithValue(getApiErrorMessage(error, "ساخت حساب کاربری ناموفق بود."));
   }
 });
 
@@ -54,7 +51,7 @@ export const loadMe = createAsyncThunk("auth/me", async (_, api) => {
     return user;
   } catch (error) {
     clearAuthStorage();
-    return api.rejectWithValue(errorMessage(error));
+    return api.rejectWithValue(getApiErrorMessage(error, "دریافت اطلاعات حساب کاربری ناموفق بود."));
   }
 }, {
   condition: (_, { getState }) => {

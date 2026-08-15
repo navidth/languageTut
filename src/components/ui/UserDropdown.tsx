@@ -34,33 +34,33 @@ function UserDropdown() {
       aria-label="منوی کاربر"
       dismissOnClick
       color="light"
-      className="rounded-lg"
+      className="rounded-xl border border-border !bg-popover !text-popover-foreground shadow-[var(--shadow-brand-md)]"
       label={
-        <span className="flex items-center gap-2">
-          <BsPersonCircle className="h-5 w-5" />
+        <span className="flex items-center gap-2 rounded-xl text-foreground">
+          <BsPersonCircle className="h-5 w-5 text-brand-secondary dark:text-brand-accent" />
           <span>{displayName}</span>
         </span>
       }
     >
       {user && (
-        <DropdownHeader className="border-b border-secondary">
+        <DropdownHeader className="border-b border-border bg-secondary-soft text-foreground">
           <span className="block text-sm">{user.full_name}</span>
           <span className="block truncate text-sm font-medium">{user.email}</span>
         </DropdownHeader>
       )}
 
       {user && (
-        <DropdownItem as={Link} href={profilePath} icon={BsPersonCircle} className="flex items-center gap-2 justify-start">
+        <DropdownItem as={Link} href={profilePath} icon={BsPersonCircle} className="flex items-center justify-start gap-2 hover:!bg-accent-soft hover:!text-brand-primary">
           جزئیات پروفایل
         </DropdownItem>
       )}
 
       {user ? (
-        <DropdownItem icon={BiLogOut} onClick={handleLogout} className="flex items-center gap-2 justify-start text-red-500">
+        <DropdownItem icon={BiLogOut} onClick={handleLogout} className="flex items-center justify-start gap-2 text-destructive hover:!bg-destructive-soft">
           خروج
         </DropdownItem>
       ) : (
-        <DropdownItem as={Link} href="/" className="flex items-center gap-2 justify-start">
+        <DropdownItem as={Link} href="/" className="flex items-center justify-start gap-2 hover:!bg-accent-soft">
           ورود
         </DropdownItem>
       )}

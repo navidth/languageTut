@@ -8,7 +8,7 @@ export type User = {
   email: string;
   full_name: string;
   role: UserRole;
-  current_level?: CurrentLevel;
+  current_level?: CurrentLevel | null;
   date_joined: string;
 };
 
@@ -27,14 +27,14 @@ export type RegisterRequest = {
   email: string;
   password: string;
   full_name: string;
-  current_level?: CurrentLevel;
+  current_level?: CurrentLevel | null;
 };
 
 export type RegisterResponse = {
   id: number;
   email: string;
   full_name: string;
-  current_level?: CurrentLevel;
+  current_level?: CurrentLevel | null;
 };
 
 export type ForgotPasswordRequest = { email: string };

@@ -2,15 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { UserRole } from "@/lib/auth";
+import { dashboardRouteForRole } from "@/lib/authFlow";
 import { loadMe } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-const dashboardPath = (role: UserRole) => {
-  if (role === "teacher") return "/teacher";
-  if (role === "student") return "/student";
-  return null;
-};
+export const INITIAL_ROLE_REDIRECT_KEY = "examification:initial-role-redirect";
 
 export default function LandingAuthCheck({
   children,
@@ -19,39 +15,39 @@ export default function LandingAuthCheck({
 }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const checkStarted = useRef(false);
   const { status, user } = useAppSelector((state) => state.auth);
-  const destination = user ? dashboardPath(user.role) : null;
+  const checkStarted = useRef(false);
+  const returningSession = useRef(false);
+  const redirectStarted = useRef(false);
 
   useEffect(() => {
-    if (checkStarted.current) return;
+    if (checkStarted.current || status === "authenticated") return;
     checkStarted.current = true;
-    void dispatch(loadMe());
-  }, [dispatch]);
+
+    const hasStoredSession = Boolean(
+      localStorage.getItem("accessToken") || localStorage.getItem("refreshToken"),
+    );
+    if (hasStoredSession) {
+      returningSession.current = true;
+      void dispatch(loadMe());
+    }
+  }, [dispatch, status]);
 
   useEffect(() => {
-    if (status === "authenticated" && destination) {
-      router.replace(destination);
+    if (
+      !returningSession.current ||
+      redirectStarted.current ||
+      status !== "authenticated" ||
+      !user ||
+      sessionStorage.getItem(INITIAL_ROLE_REDIRECT_KEY)
+    ) {
+      return;
     }
-  }, [destination, router, status]);
 
-  if (status === "idle" || status === "loading" || destination) {
-    return (
-      <div
-        className="flex min-h-[60vh] items-center justify-center"
-        role="status"
-        aria-live="polite"
-      >
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <span
-            className="size-9 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-            aria-hidden="true"
-          />
-          <span>در حال بررسی وضعیت ورود...</span>
-        </div>
-      </div>
-    );
-  }
+    redirectStarted.current = true;
+    sessionStorage.setItem(INITIAL_ROLE_REDIRECT_KEY, "1");
+    router.push(dashboardRouteForRole(user.role));
+  }, [router, status, user]);
 
   return children;
 }

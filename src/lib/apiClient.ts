@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { normalizeApiError } from "./apiErrors";
 
 export const BACKEND_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://2.144.27.2:8000";
@@ -77,17 +78,25 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     if (typeof window === "undefined") {
-      return Promise.reject(error);
+      return Promise.reject(normalizeApiError(error));
     }
 
     const originalRequest = error.config as RetryableRequestConfig | undefined;
+    const requestUrl = originalRequest?.url ?? "";
+    const isAuthenticationRequest =
+      requestUrl.includes("/api/auth/login/") ||
+      requestUrl.includes("/api/auth/register/") ||
+      requestUrl.includes("/api/auth/token/refresh/");
+    const hasRefreshToken = Boolean(localStorage.getItem("refreshToken"));
 
     if (
       error.response?.status !== 401 ||
       !originalRequest ||
-      originalRequest._retry
+      originalRequest._retry ||
+      isAuthenticationRequest ||
+      !hasRefreshToken
     ) {
-      return Promise.reject(error);
+      return Promise.reject(normalizeApiError(error));
     }
 
     originalRequest._retry = true;
@@ -98,13 +107,16 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       clearAuthStorage();
-      // A failed authentication check on the landing page must settle there.
-      // Navigating to "/" while already there would remount the page and start
-      // the same check again.
-      if (window.location.pathname !== "/") {
+      // Student pages are intentionally public at the routing layer. Let their
+      // existing loading/error UI handle an unauthenticated API response so
+      // browser Back navigation is not replaced by a forced redirect.
+      const isStudentRoute =
+        window.location.pathname === "/student" ||
+        window.location.pathname.startsWith("/student/");
+      if (window.location.pathname !== "/" && !isStudentRoute) {
         window.location.assign("/");
       }
-      return Promise.reject(refreshError);
+      return Promise.reject(normalizeApiError(refreshError));
     }
   },
 );

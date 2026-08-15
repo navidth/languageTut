@@ -10,13 +10,12 @@ const NavbarMobile: React.FC<Props> = ({ items }) => {
       const pathname = usePathname();
 
       return (
-            <div className=" min-h-10 bg-secondary fixed bottom-0 w-full left-0 flex items-center justify-around " >
+            <nav className="fixed inset-x-3 bottom-3 z-50 flex min-h-16 items-center justify-around rounded-2xl border border-white/10 bg-brand-primary px-2 text-white shadow-2xl" aria-label="منوی پنل" >
                   {items && items.map((item) => {
                         if (!item.link) return null;
-                        const hasSubmenu = !!item.subitems;
                         const isActive = item.link === pathname;
                         return (
-                              <Link key={item.id} href={item.link} className={`relative flex flex-col justify-center items-center p-2 rounded-xl ${isActive ? "bg-primary text-background" : "hover:bg-primary hover:text-primary-foreground"}`}>
+                              <Link key={item.id} href={item.link} aria-current={isActive ? "page" : undefined} aria-label={item.label} className={`relative flex flex-col items-center justify-center rounded-xl p-3 ${isActive ? "bg-brand-accent text-brand-primary shadow-sm" : "text-white/75 hover:bg-brand-secondary hover:text-white"}`}>
                                     {typeof item.icon === "function" && (
                                           <item.icon
                                                 size={24}
@@ -26,7 +25,7 @@ const NavbarMobile: React.FC<Props> = ({ items }) => {
                               </Link>
                         )
                   })}
-            </div>
+            </nav>
       )
 }
 

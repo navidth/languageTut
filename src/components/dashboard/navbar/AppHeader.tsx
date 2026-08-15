@@ -1,19 +1,17 @@
-import Link from "next/link";
-import { Dropdown, DropdownHeader, DropdownItem } from "flowbite-react";
-import { BiLogOut } from "react-icons/bi";
-import { BsPersonCircle } from "react-icons/bs";
 import NotificationDropdown from "@/components/ui/NotificationDropdown";
 import UserDropdown from "@/components/ui/UserDropdown";
+import BrandMark from "@/components/ui/BrandMark";
 
 const AppHeader = () => {
 
       return (
-            <div className="sticky top-0 z-50 w-full min-h-10 bg-secondary/10 border-b border-secondary/90 flex items-center justify-end py-3 px-3">
-                  <div className="flex items-center sm:flex-row-reverse flex-row sm:justify-start justify-between w-full gap-4">
+            <header className="sticky top-0 z-40 flex min-h-16 w-full items-center justify-end border-b border-border bg-[var(--glass)] px-4 py-3 shadow-sm backdrop-blur-xl">
+                  <div className="flex w-full items-center justify-between gap-4 sm:flex-row-reverse sm:justify-start">
                         <UserDropdown />
                         <NotificationDropdown />
+                        <BrandMark compact className="sm:hidden" />
                   </div>
-            </div>
+            </header>
       );
 };
 

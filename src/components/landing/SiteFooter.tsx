@@ -1,131 +1,69 @@
-"use client";
 import Link from "next/link";
-import {
-      Footer,
-      FooterBrand,
-      FooterCopyright,
-      FooterDivider,
-      FooterIcon,
-      FooterLink,
-      FooterLinkGroup,
-      FooterTitle,
-} from "flowbite-react";
-import {
-      FaInstagram,
-      FaLinkedin,
-      FaTelegramPlane,
-      FaGithub,
-} from "react-icons/fa";
+import BrandMark from "@/components/ui/BrandMark";
+import { PLACEMENT_SECTION_ID } from "@/lib/routes";
+
+const footerGroups = [
+  {
+    title: "یادگیری",
+    links: [
+      { label: "دوره‌های زبان", href: "/courses" },
+      { label: "تعیین سطح", href: `/#${PLACEMENT_SECTION_ID}` },
+      { label: "مهارت‌های زبان", href: "/#skills" },
+    ],
+  },
+  {
+    title: "ExamificatioN",
+    links: [
+      { label: "امکانات", href: "/#features" },
+      { label: "نحوه کار", href: "/#how-it-works" },
+      { label: "درباره ما", href: "/#about" },
+    ],
+  },
+  {
+    title: "دسترسی سریع",
+    links: [
+      { label: "دستیار هوشمند", href: "/ai" },
+      { label: "فضای مدرس‌ها", href: "/teacher" },
+      { label: "سؤالات متداول", href: "/#faq" },
+    ],
+  },
+] as const;
 
 export default function SiteFooter() {
-      return (
-            <Footer container className=" rounded-none bg-secondary border-t border-border">
-                  <div className="w-full max-w-6xl mx-auto px-6 py-14">
-                        {/* Top */}
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-                              {/* Brand */}
-                              <div className="md:col-span-4">
-                                    <FooterBrand
-                                          src="/images/vercel.svg"
-                                          href="/"
-                                          title="نام برند"
-                                          name="نام برند"
-                                    />
-                                    <p className="mt-2 text-sm text-muted-foreground">
-                                          یادگیری و تدریس با کمک هوش مصنوعی
-                                    </p>
+  return (
+    <footer className="border-t border-white/10 bg-brand-primary px-4 text-white sm:px-6">
+      <div className="mx-auto max-w-6xl py-14 lg:py-16">
+        <div className="grid gap-12 lg:grid-cols-[1.15fr_1.85fr]">
+          <div>
+            <BrandMark variant="wordmark" inverse />
+            <p className="mt-5 max-w-sm text-sm leading-7 text-white/60">
+              پلتفرم هوشمند آموزش زبان برای تعیین سطح، یادگیری شخصی‌سازی‌شده و مدیریت بهتر تجربه آموزش.
+            </p>
+          </div>
 
-                                    <p className="mt-5 text-sm leading-7 text-muted-foreground">
-                                          یک پلتفرم دوطرفه برای زبان‌آموزها و مدرس‌ها؛ با ابزارهای هوشمند،
-                                          مسیر یادگیری و مدیریت کلاس‌ها سریع‌تر و دقیق‌تر می‌شود.
-                                    </p>
+          <nav aria-label="لینک‌های پایین صفحه" className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+            {footerGroups.map(({ title, links }) => (
+              <div key={title}>
+                <h2 className="text-sm font-black text-white">{title}</h2>
+                <ul className="mt-5 space-y-3">
+                  {links.map(({ label, href }) => (
+                    <li key={label}>
+                      <Link href={href} className="text-sm text-white/55 hover:text-brand-accent">
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </div>
 
-                                    {/* Social */}
-                                    <div className="mt-6 flex gap-4">
-                                          <FooterIcon href="#" icon={FaInstagram} />
-                                          <FooterIcon href="#" icon={FaLinkedin} />
-                                          <FooterIcon href="#" icon={FaTelegramPlane} />
-                                          <FooterIcon href="#" icon={FaGithub} />
-                                    </div>
-                              </div>
-
-                              {/* Quick Links */}
-                              <div className="md:col-span-2">
-                                    <FooterTitle title="لینک‌های سریع" />
-                                    <FooterLinkGroup col>
-                                          <FooterLink as={Link} href="#about">درباره ما</FooterLink>
-                                          <FooterLink as={Link} href="#why-us">چرا ما؟</FooterLink>
-                                          <FooterLink as={Link} href="#pricing">تعرفه‌ها</FooterLink>
-                                          <FooterLink as={Link} href="#faq">سوالات متداول</FooterLink>
-                                    </FooterLinkGroup>
-                              </div>
-
-                              {/* Product */}
-                              <div className="md:col-span-3">
-                                    <FooterTitle title="محصول" />
-                                    <FooterLinkGroup col>
-                                          <FooterLink as={Link} href="/student">برای زبان‌آموزها</FooterLink>
-                                          <FooterLink as={Link} href="/teacher">برای مدرس‌ها</FooterLink>
-                                          <FooterLink as={Link} href="/ai">دستیار AI</FooterLink>
-                                          <FooterLink as={Link} href="/blog">بلاگ</FooterLink>
-                                    </FooterLinkGroup>
-                              </div>
-
-                              {/* Newsletter (custom – Flowbite فرم آماده ندارد) */}
-                              <div className="md:col-span-3">
-                                    <FooterTitle title="خبرنامه" />
-                                    <p className="text-sm text-muted-foreground mb-4 leading-7">
-                                          ایمیلت رو وارد کن تا آپدیت‌های محصول و نکات آموزشی رو دریافت کنی.
-                                    </p>
-
-                                    <form
-                                          onSubmit={(e) => e.preventDefault()}
-                                          className="flex gap-2"
-                                    >
-                                          <input
-                                                type="email"
-                                                placeholder="example@email.com"
-                                                className="
-                  w-full rounded-xl border border-border bg-background px-4 py-3
-                  text-sm text-foreground placeholder:text-muted-foreground
-                  focus:outline-none focus:ring-2 focus:ring-primary/30
-                "
-                                          />
-                                          <button
-                                                type="submit"
-                                                className="
-                  rounded-xl px-4 py-3 text-sm font-semibold
-                  bg-primary text-primary-foreground
-                  hover:opacity-90 transition
-                "
-                                          >
-                                                عضویت
-                                          </button>
-                                    </form>
-
-                                    <p className="mt-4 text-xs text-muted-foreground">
-                                          با عضویت، شرایط و قوانین را می‌پذیرید.
-                                    </p>
-                              </div>
-                        </div>
-
-                        <FooterDivider />
-
-                        {/* Bottom */}
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                              <FooterCopyright
-                                    href="#"
-                                    by="نام برند"
-                                    year={new Date().getFullYear()}
-                              />
-
-                              <FooterLinkGroup>
-                                    <FooterLink as={Link} href="/privacy">حریم خصوصی</FooterLink>
-                                    <FooterLink as={Link} href="/terms">قوانین و مقررات</FooterLink>
-                                    <FooterLink as={Link} href="/contact">تماس با ما</FooterLink>
-                              </FooterLinkGroup>
-                        </div>
-                  </div>
-            </Footer>
-      );
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} ExamificatioN. تمامی حقوق محفوظ است.</p>
+          <p>طراحی‌شده برای یک تجربه یادگیری روشن‌تر</p>
+        </div>
+      </div>
+    </footer>
+  );
 }

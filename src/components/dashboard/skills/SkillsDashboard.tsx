@@ -24,6 +24,7 @@ import {
   updateSkill,
 } from "@/store/skillsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import Pagination from "@/components/ui/Pagination";
 import { skillDescriptions, skillLabels } from "./skillPresentation";
 
 const skillIcons: Record<SkillName, IconType> = {
@@ -116,11 +117,11 @@ export default function SkillsDashboard() {
 
   return (
     <section className="mx-auto max-w-6xl">
-      <div className="mb-7 flex flex-col gap-5 rounded-3xl bg-gradient-to-l from-blue-800 to-blue-600 p-7 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
+      <div className="page-hero mb-7 flex flex-col gap-5 rounded-3xl p-7 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="mb-2 text-sm text-blue-100">پنل آموزشی</p>
+          <p className="page-hero-muted mb-2 text-sm">پنل آموزشی</p>
           <h1 className="text-3xl font-black">مهارت‌های زبان</h1>
-          <p className="mt-2 text-blue-100">
+          <p className="page-hero-muted mt-2">
             چهار مهارت اصلی دوره‌های آموزش زبان و آیلتس
           </p>
         </div>
@@ -128,7 +129,7 @@ export default function SkillsDashboard() {
           <button
             type="button"
             onClick={openCreateForm}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-800 transition hover:bg-blue-50"
+            className="brand-button inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3"
           >
             <FaPlus aria-hidden="true" />
             افزودن مهارت
@@ -177,29 +178,16 @@ export default function SkillsDashboard() {
             ))}
           </div>
 
-          {(next || previous) && (
-            <nav
-              className="mt-7 flex items-center justify-center gap-3"
-              aria-label="صفحه‌بندی مهارت‌ها"
-            >
-              <button
-                type="button"
-                disabled={!previous || loading}
-                onClick={() => void dispatch(fetchSkills(page - 1))}
-                className="rounded-xl border border-border bg-card px-5 py-2 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                صفحه قبل
-              </button>
-              <button
-                type="button"
-                disabled={!next || loading}
-                onClick={() => void dispatch(fetchSkills(page + 1))}
-                className="rounded-xl border border-border bg-card px-5 py-2 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                صفحه بعد
-              </button>
-            </nav>
-          )}
+          <Pagination
+            currentPage={page}
+            count={count}
+            resultsCount={items.length}
+            next={next}
+            previous={previous}
+            onPageChange={(requestedPage) => void dispatch(fetchSkills(requestedPage))}
+            loading={loading}
+            ariaLabel="صفحه‌بندی مهارت‌ها"
+          />
         </>
       )}
 
@@ -236,12 +224,12 @@ function SkillCard({
   const Icon = skillIcons[skill.name];
 
   return (
-    <article className="group rounded-3xl border border-border bg-card p-6 shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-md">
+    <article className="surface-card group rounded-3xl p-6 transition hover:-translate-y-1">
       <div className="flex items-start justify-between gap-4">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-blue-100 text-2xl text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+        <span className="flex size-14 items-center justify-center rounded-2xl bg-accent-soft text-2xl text-brand-secondary dark:text-brand-accent">
           <Icon aria-hidden="true" />
         </span>
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+        <span className="rounded-full bg-success-soft px-3 py-1 text-xs font-bold text-success">
           ترتیب {skill.order.toLocaleString("fa-IR")}
         </span>
       </div>
@@ -252,7 +240,7 @@ function SkillCard({
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
         <Link
           href={`/student/skills/${skill.id}`}
-          className="ml-auto font-bold text-primary"
+          className="brand-link ml-auto"
         >
           مشاهده جزئیات ←
         </Link>
@@ -261,7 +249,7 @@ function SkillCard({
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-secondary"
+              className="ghost-button rounded-lg px-3 py-2 text-sm"
             >
               ویرایش
             </button>
@@ -269,7 +257,7 @@ function SkillCard({
               type="button"
               disabled={deleting}
               onClick={onDelete}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/40"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive-soft"
             >
               <FaTrash aria-hidden="true" />
               حذف
@@ -304,7 +292,7 @@ function SkillForm({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-brand-primary/70 p-4 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -314,7 +302,7 @@ function SkillForm({
         role="dialog"
         aria-modal="true"
         aria-labelledby="skill-form-title"
-        className="w-full max-w-md rounded-3xl bg-card p-6 shadow-2xl"
+        className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl"
       >
         <h2 id="skill-form-title" className="text-2xl font-black">
           {editing ? "ویرایش مهارت" : "افزودن مهارت"}
@@ -331,7 +319,7 @@ function SkillForm({
               onChange={(event) =>
                 onNameChange(event.target.value as SkillName)
               }
-              className="w-full rounded-xl border border-input bg-background px-4 py-3"
+              className="w-full rounded-xl border border-input bg-card px-4 py-3"
               disabled={loading}
             >
               {SKILL_NAMES.map((skillName) => (
@@ -356,7 +344,7 @@ function SkillForm({
                     : event.target.valueAsNumber,
                 )
               }
-              className="w-full rounded-xl border border-input bg-background px-4 py-3"
+              className="w-full rounded-xl border border-input bg-card px-4 py-3"
               disabled={loading}
             />
           </label>
@@ -364,7 +352,7 @@ function SkillForm({
             <button
               type="submit"
               disabled={loading || !Number.isInteger(order)}
-              className="flex-1 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50"
+              className="brand-button flex-1 rounded-xl px-5 py-3"
             >
               {loading ? "در حال ذخیره..." : "ذخیره"}
             </button>
@@ -372,7 +360,7 @@ function SkillForm({
               type="button"
               disabled={loading}
               onClick={onClose}
-              className="rounded-xl border border-border px-5 py-3 disabled:opacity-50"
+              className="ghost-button rounded-xl px-5 py-3"
             >
               انصراف
             </button>
@@ -426,7 +414,7 @@ function EmptyState({
         <button
           type="button"
           onClick={onCreate}
-          className="mt-5 rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground"
+          className="brand-button mt-5 rounded-xl px-5 py-3"
         >
           افزودن اولین مهارت
         </button>
@@ -443,12 +431,12 @@ function ErrorState({
   retry: () => void;
 }) {
   return (
-    <div className="rounded-3xl border border-red-200 bg-red-50 p-10 text-center text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+    <div className="feedback-error rounded-3xl p-10 text-center">
       <p>{message}</p>
       <button
         type="button"
         onClick={retry}
-        className="mt-5 rounded-xl bg-red-700 px-5 py-2 font-bold text-white"
+        className="secondary-button mt-5 rounded-xl px-5 py-2"
       >
         تلاش دوباره
       </button>
@@ -467,8 +455,8 @@ function Feedback({
 }) {
   const colors =
     color === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
-      : "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200";
+      ? "feedback-success"
+      : "feedback-error";
 
   return (
     <div

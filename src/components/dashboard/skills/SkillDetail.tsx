@@ -49,32 +49,32 @@ export default function SkillDetail({ id }: { id: number }) {
     <section className="mx-auto max-w-3xl">
       <Link
         href="/student/skills"
-        className="mb-6 inline-flex font-bold text-primary"
+        className="brand-link mb-6 inline-flex"
       >
         → بازگشت به مهارت‌ها
       </Link>
-      <article className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-        <div className="bg-gradient-to-l from-blue-800 to-blue-600 p-8 text-white">
+      <article className="surface-card overflow-hidden rounded-3xl">
+        <div className="page-hero p-8">
           <span className="rounded-full bg-white/15 px-3 py-1 text-sm">
             شناسه {selected.id.toLocaleString("fa-IR")}
           </span>
           <h1 className="mt-5 text-3xl font-black">
             {skillLabels[selected.name]}
           </h1>
-          <p className="mt-2 text-blue-100">{selected.name}</p>
+          <p lang="en" dir="ltr" className="page-hero-muted mt-2 text-left">{selected.name}</p>
         </div>
         <div className="p-8">
           <p className="text-lg leading-9 text-muted-foreground">
             {skillDescriptions[selected.name]}
           </p>
           <dl className="mt-7 grid gap-4 border-t border-border pt-6 sm:grid-cols-2">
-            <div className="rounded-2xl bg-secondary p-4">
+            <div className="rounded-2xl bg-secondary-soft p-4">
               <dt className="text-sm text-muted-foreground">نام API</dt>
               <dd className="mt-2 font-bold" dir="ltr">
                 {selected.name}
               </dd>
             </div>
-            <div className="rounded-2xl bg-secondary p-4">
+            <div className="rounded-2xl bg-secondary-soft p-4">
               <dt className="text-sm text-muted-foreground">ترتیب نمایش</dt>
               <dd className="mt-2 font-bold">
                 {selected.order.toLocaleString("fa-IR")}
@@ -102,14 +102,14 @@ function DetailMessage({
           <button
             type="button"
             onClick={retry}
-            className="rounded-xl bg-primary px-5 py-2 font-bold text-primary-foreground"
+            className="brand-button rounded-xl px-5 py-2"
           >
             تلاش دوباره
           </button>
         )}
         <Link
           href="/student/skills"
-          className="rounded-xl border border-border px-5 py-2 font-bold"
+          className="ghost-button rounded-xl px-5 py-2"
         >
           بازگشت
         </Link>

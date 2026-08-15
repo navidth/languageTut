@@ -1,7 +1,8 @@
-import AuthModalButton from "@/components/auth/AuthModalButton";
 import { menuItems } from "@/lib/constants";
 import Link from "next/link";
 import { HiX } from "react-icons/hi";
+import BrandMark from "@/components/ui/BrandMark";
+import LandingAccountAction from "./LandingAccountAction";
 
 export default function MobileMenu({
       open,
@@ -14,19 +15,19 @@ export default function MobileMenu({
 }) {
       return (
             <div
+                  aria-hidden={!open}
+                  inert={!open}
                   className={`
-                        fixed inset-0 z-[999] bg-background backdrop-blur-xl transition-transform duration-300
-                        ${open ? "translate-x-0" : "translate-x-full"}
+                        fixed inset-0 z-[999] bg-background/95 backdrop-blur-xl transition-transform duration-300
+                        ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}
                         md:hidden
                   `}
             >
                   <div className="flex items-center justify-between p-6">
-                        <Link href="/" onClick={onClose}>
-                              <span className="self-center whitespace-nowrap text-xl font-bold text-foreground">
-                                    LOGO
-                              </span>
-                        </Link>
-                        <HiX size={26} className="cursor-pointer dark:text-foreground" onClick={onClose} />
+                        <BrandMark variant="wordmark" className="cursor-pointer" />
+                        <button type="button" onClick={onClose} aria-label="بستن منوی اصلی" className="rounded-xl p-2 text-foreground hover:bg-accent-soft">
+                              <HiX size={26} />
+                        </button>
                   </div>
 
                   <nav className="mt-10 flex flex-col gap-6 px-8 text-lg">
@@ -40,18 +41,16 @@ export default function MobileMenu({
                                           (typeof item.link === "string" &&
                                                 pathName &&
                                                 (pathName === item.link || (pathName.startsWith(item.link) && item.link !== "/")))
-                                                ? "bg-primary"
+                                                ? "bg-accent text-accent-foreground shadow-sm"
                                                 : "text-foreground"
-                                    } hover:bg-primary`}
+                                    } hover:bg-accent-soft hover:text-brand-primary`}
                               >
                                     {item.icon && typeof item.icon === "function" && <item.icon size={24} />}
                                     {item.label}
                               </Link>
                         ))}
 
-                        <AuthModalButton color="default" className="mt-6 rounded-xl" onOpened={onClose}>
-                               شروع یادگیری
-                        </AuthModalButton>
+                        <LandingAccountAction mobile onNavigate={onClose} />
                   </nav>
             </div>
       );

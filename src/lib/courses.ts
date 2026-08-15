@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import type { MediaAsset } from "./media";
 import type { Skill } from "./skills";
 
 export type Level = {
@@ -8,19 +9,29 @@ export type Level = {
   order: number;
 };
 
-export type CurrentLevelCode = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+export type CurrentLevelCode = "PT" | "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+
+export type CourseType = "general" | "ielts" | (string & {});
+
+export type CourseMedia = MediaAsset;
 
 export type Course = {
   id: number;
   title: string;
   level: number;
   level_detail: Level;
+  course_type: CourseType;
   description: string;
   price: number;
   is_free: boolean;
   has_access: boolean;
+  media: CourseMedia[] | null;
+  is_recommended: boolean;
+  recommendation_order: number | null;
   is_active: boolean;
+  deleted_at: string | null;
   lessons_count: number;
+  resources_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -28,8 +39,11 @@ export type Course = {
 export type CoursePayload = {
   title: string;
   level: number;
+  course_type?: CourseType;
   description?: string;
   price?: number;
+  is_recommended?: boolean;
+  recommendation_order?: number | null;
   is_active?: boolean;
 };
 

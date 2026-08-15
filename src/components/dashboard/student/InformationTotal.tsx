@@ -12,10 +12,10 @@ type InfoItem = {
   badge?: string; // اختیاری مثل "این ماه"
 };
 
-const dotMap: Record<NonNullable<InfoItem['dotVariant']>, string> = {
-  cta: '[oklch(var(--chart-1))]',
-  primary: 'primary',
-  accent: 'accent',
+const dotMap: Record<NonNullable<InfoItem['dotVariant']>, { dot: string; icon: string }> = {
+  cta: { dot: 'bg-brand-accent', icon: 'text-brand-accent' },
+  primary: { dot: 'bg-brand-primary dark:bg-white', icon: 'text-brand-primary dark:text-white' },
+  accent: { dot: 'bg-brand-secondary dark:bg-brand-accent', icon: 'text-brand-secondary dark:text-brand-accent' },
 };
 
 const InformationTotal = () => {
@@ -61,13 +61,13 @@ const InformationTotal = () => {
               <span
                 className={[
                   'h-2.5 w-2.5 rounded-full',
-                  item.dotVariant ? `bg-${dotMap[item.dotVariant]}` : 'bg-primary',
+                  item.dotVariant ? dotMap[item.dotVariant].dot : 'bg-brand-primary',
                 ].join(' ')}
               />
 
               {/* Icon */}
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary ml-1">
-                <Icon className={`h-5 w-5 ${item.dotVariant ? `text-${dotMap[item.dotVariant]}` : "bg-primary"}`} />
+              <div className="ml-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary-soft">
+                <Icon className={`h-5 w-5 ${item.dotVariant ? dotMap[item.dotVariant].icon : "text-brand-primary"}`} />
               </div>
 
               {/* Text */}

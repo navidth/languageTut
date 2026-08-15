@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { Course, coursesApi } from "@/lib/courses";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 
 type CoursesState = {
   items: Course[];
@@ -10,7 +11,16 @@ type CoursesState = {
 
 const initialState: CoursesState = { items: [], count: 0, status: "idle", error: null };
 
-export const fetchCourses = createAsyncThunk("courses/list", (page: number = 1) => coursesApi.list(page));
+export const fetchCourses = createAsyncThunk(
+  "courses/list",
+  async (page: number = 1, api) => {
+    try {
+      return await coursesApi.list(page);
+    } catch (error) {
+      return api.rejectWithValue(getApiErrorMessage(error, "دریافت دوره‌ها ناموفق بود."));
+    }
+  },
+);
 
 const coursesSlice = createSlice({
   name: "courses",
@@ -32,7 +42,7 @@ const coursesSlice = createSlice({
       })
       .addCase(fetchCourses.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.error.message ?? "دریافت دوره‌ها ناموفق بود.";
+        state.error = String(action.payload ?? "دریافت دوره‌ها ناموفق بود.");
       });
   },
 });

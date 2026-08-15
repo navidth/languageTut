@@ -1,9 +1,12 @@
-import React from 'react'
+import type { HTMLAttributes } from "react";
 
-const Card = () => {
+type CardProps = HTMLAttributes<HTMLDivElement>;
+
+export default function Card({ className = "", ...props }: CardProps) {
   return (
-    <div>Card</div>
-  )
+    <div
+      className={`surface-card rounded-2xl p-6 ${className}`}
+      {...props}
+    />
+  );
 }
-
-export default Card

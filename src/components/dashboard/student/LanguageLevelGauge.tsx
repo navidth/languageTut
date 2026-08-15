@@ -41,7 +41,7 @@ export function LanguageLevelGauge({
         <path
           d="M20 110 A90 90 0 0 1 200 110"
           fill="none"
-          stroke="var(--primary)"
+          stroke="var(--brand-accent)"
           strokeWidth="14"
           strokeLinecap="round"
           strokeDasharray={circumference}

@@ -21,13 +21,13 @@ export default function RootLayout({ children }: Readonly<{
 function ClientLayout({ children }: { children: React.ReactNode }) {
       const size = useWindows()
       return (
-            <main className="sm:flex">
+            <main className="min-h-screen bg-background sm:flex">
                   {size && size.width > 640 ? (
                         <AppSidebar items={itemsStudent} />
                   ) : size && <NavbarMobile items={itemsStudent} />}
-                  <div className={`flex-1 transition-all duration-300 ease-in-out sm:mr-[calc(var(--spacing)*52)] `}>
+                  <div className="min-w-0 flex-1 transition-all duration-300 ease-in-out sm:ms-52">
                         <AppHeader />
-                        <div className="p-4 mx-auto md:p-6">
+                        <div className="mx-auto p-4 pb-24 md:p-6 sm:pb-6">
                               {children}
                         </div>
                   </div>
