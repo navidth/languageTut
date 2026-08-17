@@ -8,7 +8,7 @@ import LandingAuthCheck from "@/components/landing/LandingAuthCheck";
 import PlacementTestSection from "@/components/landing/PlacementTestSection";
 import TrustSection from "@/components/landing/TrustSection";
 import UserTypeSection from "@/components/landing/UserTypeSection";
-import WhyUsSection from "@/components/landing/WhyUsSection";
+// import WhyUsSection from "@/components/landing/WhyUsSection";
 
 const title = "آموزش هوشمند زبان انگلیسی و تعیین سطح آنلاین";
 const description =
@@ -81,7 +81,7 @@ export default function HomePage() {
       />
       <HeroSplit />
       <UserTypeSection />
-      <WhyUsSection />
+      {/* <WhyUsSection /> */}
       <HowItWorksSection />
       <TrustSection />
       <PlacementTestSection />

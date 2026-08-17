@@ -44,7 +44,7 @@ export default function HeroSplit() {
                               href="/ai"
                               className="
                                     flex h-32 w-32 cursor-pointer flex-col items-center justify-center rounded-full
-                                    border-4 border-background bg-brand-accent text-brand-primary shadow-2xl transition hover:scale-105
+                                     bg-background text-brand-primary shadow-2xl transition hover:scale-105
                               "
                         >
                               <HiSparkles className="mb-2 h-8 w-8 text-brand-primary" />
