@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import CourseGrid from "./CourseGrid";
+import { normalizeMediaAssets } from "@/components/media/MediaGallery";
 import type { Course } from "@/lib/courses";
 
 const course: Course = {
@@ -31,7 +32,26 @@ const course: Course = {
 };
 
 describe("CourseGrid", () => {
-  it("shows course metadata, pricing, access and playable media", () => {
+  it("recognizes authenticated course stream URLs from the current API", () => {
+    expect(normalizeMediaAssets([{
+      id: 1,
+      course: 15,
+      media_type: "video",
+      title: "file 1",
+      file_name: "lesson.mp4",
+      stream_url: "http://2.144.27.2:8000/api/course-media/1/stream/",
+      order: 1,
+    }])).toEqual([
+      expect.objectContaining({
+        id: "1",
+        kind: "video",
+        title: "file 1",
+        url: "http://2.144.27.2:8000/api/course-media/1/stream/",
+      }),
+    ]);
+  });
+
+  it("shows course metadata, pricing and access without embedding media players", () => {
     const { container } = render(<CourseGrid initialCourses={[course]} />);
 
     expect(screen.getByRole("heading", { name: course.title })).toBeInTheDocument();
@@ -41,10 +61,7 @@ describe("CourseGrid", () => {
     expect(screen.getByText("۳")).toBeInTheDocument();
     expect(screen.getByText("۹۰٬۰۰۰ تومان")).toBeInTheDocument();
     expect(screen.getByText("نیاز به تهیه دوره")).toBeInTheDocument();
-    expect(screen.getByLabelText("معرفی صوتی دوره")).toBeInTheDocument();
-    expect(container.querySelector("source")).toHaveAttribute(
-      "src",
-      "http://2.144.27.2:8000/media/courses/intro.mp3",
-    );
+    expect(screen.queryByLabelText("معرفی صوتی دوره")).not.toBeInTheDocument();
+    expect(container.querySelector("audio, video")).not.toBeInTheDocument();
   });
 });

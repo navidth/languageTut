@@ -40,7 +40,9 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  ).replace(/\/$/, "");
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -82,12 +84,12 @@ export default function HomePage() {
       <HeroSplit />
       <UserTypeSection />
       {/* <WhyUsSection /> */}
+      <PlacementTestSection />
       <HowItWorksSection />
       <TrustSection />
-      <PlacementTestSection />
       <AboutSection />
       <FAQSection />
-      <FinalCTASection />
+      {/* <FinalCTASection /> */}
     </LandingAuthCheck>
   );
 }

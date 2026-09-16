@@ -7,6 +7,8 @@ export type MediaAssetObject = {
   mime_type?: string | null;
   content_type?: string | null;
   file?: string | null;
+  file_name?: string | null;
+  stream_url?: string | null;
   media_file?: string | null;
   file_url?: string | null;
   media_url?: string | null;
@@ -29,6 +31,7 @@ export type MediaAssetObject = {
   duration_seconds?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
+  course?: number | null;
   [key: string]: unknown;
 };
 

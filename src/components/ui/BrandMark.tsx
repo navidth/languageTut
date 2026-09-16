@@ -10,9 +10,22 @@ type BrandMarkProps = {
   variant?: BrandVariant;
 };
 
-const brandAssets: Record<BrandVariant, { src: string; width: number; height: number; className: string }> = {
-  primary: { src: "/brand-logo.png", width: 536, height: 306, className: "h-14 sm:h-16" },
-  wordmark: { src: "/brand-wordmark.png", width: 344, height: 66, className: "h-7 sm:h-8" },
+const brandAssets: Record<
+  BrandVariant,
+  { src: string; width: number; height: number; className: string }
+> = {
+  primary: {
+    src: "/brand-logo.png",
+    width: 536,
+    height: 306,
+    className: "h-14 sm:h-16",
+  },
+  wordmark: {
+    src: "/brand-wordmark.png",
+    width: 344,
+    height: 66,
+    className: "h-7 sm:h-8",
+  },
   icon: { src: "/brand-icon.png", width: 92, height: 222, className: "h-10" },
 };
 

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { HiAcademicCap, HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
-import MediaGallery from "@/components/media/MediaGallery";
 import type { Course } from "@/lib/courses";
 
 const courseTypeLabels: Record<string, string> = {
@@ -16,22 +15,16 @@ function formatPrice(course: Course) {
 
 export default function CourseGrid({
   initialCourses,
+  detailBasePath = "/courses",
 }: {
   initialCourses: Course[];
+  detailBasePath?: string;
 }) {
   return (
-    <div className="grid items-start gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3">
       {initialCourses.map((course) => (
-        <article key={course.id} className="surface-card flex overflow-hidden rounded-3xl p-0 transition hover:-translate-y-1">
+        <article key={course.id} className="surface-card flex h-full overflow-hidden rounded-3xl p-0 transition hover:-translate-y-1">
           <div className="flex w-full min-w-0 flex-col">
-            <MediaGallery
-              media={course.media}
-              compact
-              limit={1}
-              audioLabel="فایل صوتی دوره"
-              videoLabel="ویدئوی دوره"
-            />
-
             <div className="flex flex-1 flex-col p-6">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span className="brand-badge rounded-full px-3 py-1 text-xs font-bold">
@@ -85,7 +78,7 @@ export default function CourseGrid({
                     )}
                   </span>
                 </div>
-                <Link href={`/courses/${course.id}`} className="brand-button shrink-0 rounded-xl px-4 py-2.5 text-sm">
+                <Link href={`${detailBasePath}/${course.id}`} className="brand-button shrink-0 rounded-xl px-4 py-2.5 text-sm">
                   مشاهده دوره
                 </Link>
               </div>

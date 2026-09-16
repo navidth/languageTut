@@ -5,7 +5,6 @@ import Link from "next/link";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 import { studentApi, type Lesson, type Paginated, type PracticeTest, type Question } from "@/lib/studentApi";
 import type { Course, Level } from "@/lib/courses";
-import MediaGallery from "@/components/media/MediaGallery";
 import Pagination from "@/components/ui/Pagination";
 
 export type ResourceKind = "levels" | "courses" | "lessons" | "questions" | "tests";
@@ -125,7 +124,6 @@ function LevelCard({ item }: { item: Level }) {
 function CourseCard({ item }: { item: Course }) {
   const type = item.course_type === "ielts" ? "آیلتس" : item.course_type === "general" ? "زبان عمومی" : item.course_type;
   return <>
-    <MediaGallery media={item.media} compact limit={1} audioLabel="فایل صوتی دوره" videoLabel="ویدئوی دوره" className="-mx-5 -mt-5 mb-5" />
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="brand-badge rounded-full px-3 py-1 text-sm">سطح {item.level_detail?.code}</span>
       <span className="text-sm text-muted-foreground">{type}</span>

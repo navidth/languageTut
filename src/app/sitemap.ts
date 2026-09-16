@@ -7,6 +7,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fixed: MetadataRoute.Sitemap = [
     { url: baseUrl, changeFrequency: "weekly", priority: 1 },
     { url: `${baseUrl}/courses`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/ielts`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${baseUrl}/consultation`, changeFrequency: "monthly", priority: 0.7 },
   ];
   try {
     const response = await fetch(`${BACKEND_BASE_URL}/api/courses/`, { next: { revalidate: 3600 } });

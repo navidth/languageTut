@@ -117,6 +117,37 @@ describe("TestDetailPage", () => {
     expect(screen.getByLabelText("صحیح").closest("div")).toHaveClass("grid-cols-2");
   });
 
+  it("renders audio and video attached to the placement test and its questions", async () => {
+    mocks.test.mockResolvedValue({
+      ...practiceTest,
+      media: [{
+        id: 10,
+        media_type: "video",
+        title: "ویدئوی راهنما",
+        stream_url: "http://2.144.27.2:8000/api/test-media/10/stream/",
+      }],
+      questions: [{
+        ...practiceTest.questions[0],
+        media: [{
+          id: 11,
+          media_type: "voice",
+          title: "صدای سؤال",
+          stream_url: "http://2.144.27.2:8000/api/question-media/11/stream/",
+        }],
+      }],
+      questions_count: 1,
+    });
+
+    const { container } = render(<TestDetailPage id={51} />);
+
+    expect(await screen.findByLabelText("ویدئوی راهنما")).toBeInTheDocument();
+    expect(screen.getByLabelText("صدای سؤال")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "رسانه سؤال ۱" })).toBeInTheDocument();
+    const sources = container.querySelectorAll("source");
+    expect(sources[0]).toHaveAttribute("src", "http://2.144.27.2:8000/api/test-media/10/stream/");
+    expect(sources[1]).toHaveAttribute("src", "http://2.144.27.2:8000/api/question-media/11/stream/");
+  });
+
   it("submits all answers only after the test is complete", async () => {
     const user = userEvent.setup();
     render(<TestDetailPage id={51} />);

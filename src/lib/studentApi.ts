@@ -31,6 +31,9 @@ export type Question = {
   question_text: string;
   question_type: string;
   options: unknown;
+  media?: PracticeTestMedia[];
+  audio_url?: string | null;
+  video_url?: string | null;
   correct_answer?: string | null;
   explanation?: string | null;
   points?: string;
@@ -108,6 +111,12 @@ export type MyProgress = {
   lessons: LessonProgress[];
 };
 
+export type PurchaseResponse = {
+  payment_url: string | null;
+  authority?: string;
+  detail?: string;
+};
+
 const list = async <T>(path: string, page = 1) =>
   (await apiClient.get<Paginated<T>>(path, { params: { page } })).data;
 
@@ -119,6 +128,8 @@ export const studentApi = {
   courses: (page = 1) => list<Course>("/api/courses/", page),
   course: async (id: number) =>
     (await apiClient.get<Course>(`/api/courses/${id}/`)).data,
+  purchaseCourse: async (id: number) =>
+    (await apiClient.post<PurchaseResponse>(`/api/payments/courses/${id}/purchase/`, {})).data,
   lessons: (page = 1) => list<Lesson>("/api/lessons/", page),
   questions: (page = 1) => list<Question>("/api/questions/", page),
   tests: (page = 1) => list<PracticeTest>("/api/practice-tests/", page),
@@ -131,6 +142,8 @@ export const studentApi = {
   enrollments: (page = 1) => list<Enrollment>("/api/me/enrollments/", page),
   progress: async () =>
     (await apiClient.get<MyProgress>("/api/me/progress/")).data,
+  courseProgress: async (courseId: number) =>
+    (await apiClient.get<CourseProgress>(`/api/me/courses/${courseId}/progress/`)).data,
   startLesson: async (id: number) =>
     (await apiClient.post(`/api/lessons/${id}/start/`)).data,
   completeLesson: async (id: number) =>

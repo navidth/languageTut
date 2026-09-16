@@ -22,7 +22,7 @@ export default function NavbarIndex() {
         fluid
         className={`z-50 border-b border-border !bg-[var(--glass)] shadow-[var(--shadow-brand-sm)] backdrop-blur-xl ${
           size && size.width > 640
-            ? "sticky top-0 w-full px-3 py-4"
+            ? "sticky top-0 w-full px-3 "
             : "fixed top-4 left-1/2 w-[calc(100%-32px)] max-w-[1000px] -translate-x-1/2 rounded-2xl border"
         }`}
       >

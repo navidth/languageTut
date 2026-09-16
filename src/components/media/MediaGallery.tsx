@@ -78,6 +78,7 @@ export function normalizeMediaAssets(
     }
 
     const source = firstText(
+      media.stream_url,
       media.video_url,
       media.audio_url,
       media.video,
@@ -148,7 +149,7 @@ export default function MediaGallery({
           <video
             controls
             playsInline
-            preload="none"
+            preload="metadata"
             poster={item.poster}
             className="aspect-video w-full bg-brand-primary object-contain"
             aria-label={item.title}
@@ -169,7 +170,7 @@ export default function MediaGallery({
                 </span>
               )}
             </div>
-            <audio controls preload="none" className="w-full" aria-label={item.title}>
+            <audio controls preload="metadata" className="w-full" aria-label={item.title}>
               <source src={item.url} type={item.mimeType} />
               مرورگر شما پخش فایل صوتی را پشتیبانی نمی‌کند.
             </audio>

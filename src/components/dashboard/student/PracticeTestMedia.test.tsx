@@ -53,6 +53,25 @@ describe("PracticeTestMedia", () => {
     ]);
   });
 
+  it("recognizes audio streams returned by placement-test media endpoints", () => {
+    const normalized = normalizePracticeTestMedia([{
+      id: 9,
+      media_type: "audio",
+      title: "صدای تعیین سطح",
+      file_name: "placement-listening.mp3",
+      stream_url: "http://2.144.27.2:8000/api/test-media/9/stream/",
+    }]);
+
+    expect(normalized).toEqual([
+      expect.objectContaining({
+        id: "9",
+        kind: "audio",
+        title: "صدای تعیین سطح",
+        url: "http://2.144.27.2:8000/api/test-media/9/stream/",
+      }),
+    ]);
+  });
+
   it("renders nothing when the API has no playable media", () => {
     const { container } = render(<PracticeTestMedia media={[]} />);
     expect(container).toBeEmptyDOMElement();

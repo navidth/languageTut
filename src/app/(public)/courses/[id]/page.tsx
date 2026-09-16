@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HiCheckCircle, HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
+import { HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
+import CourseBackLink from "@/components/courses/CourseBackLink";
+import CourseStartAction from "@/components/courses/CourseStartAction";
 import MediaGallery from "@/components/media/MediaGallery";
 import Pagination from "@/components/ui/Pagination";
 import { BACKEND_BASE_URL } from "@/lib/apiClient";
@@ -114,7 +115,7 @@ export default async function CoursePage({ params, searchParams }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <Link href="/courses" className="brand-link mb-8 inline-block">بازگشت به دوره‌ها</Link>
+      <CourseBackLink />
 
       <header className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-primary via-brand-primary to-brand-secondary p-7 text-white shadow-[var(--shadow-brand-md)] md:p-10">
         <div className="pointer-events-none absolute -end-20 -top-24 size-72 rounded-full border-[3rem] border-white/[0.04]" aria-hidden="true" />
@@ -146,19 +147,7 @@ export default async function CoursePage({ params, searchParams }: Props) {
           <div className="min-w-64 rounded-2xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
             <p className="text-xs text-white/55">هزینه دوره</p>
             <strong className="mt-1 block text-2xl text-brand-accent">{formatPrice(course)}</strong>
-            <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white/75">
-              {course.has_access ? (
-                <>
-                  <HiCheckCircle className="size-5 text-success" aria-hidden="true" />
-                  دسترسی شما فعال است
-                </>
-              ) : (
-                <>
-                  <HiLockClosed className="size-5 text-brand-accent" aria-hidden="true" />
-                  برای مشاهده کامل، دوره را تهیه کنید
-                </>
-              )}
-            </div>
+            <CourseStartAction initialCourse={course} />
           </div>
         </div>
       </header>

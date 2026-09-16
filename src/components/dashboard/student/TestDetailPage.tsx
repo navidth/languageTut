@@ -35,10 +35,11 @@ export function formatRemainingTime(totalSeconds: number) {
   const safeSeconds = Math.max(0, Math.floor(totalSeconds));
   const minutes = Math.floor(safeSeconds / 60);
   const seconds = safeSeconds % 60;
-  const formatPart = (value: number) => value.toLocaleString("fa-IR", {
-    minimumIntegerDigits: 2,
-    useGrouping: false,
-  });
+  const formatPart = (value: number) =>
+    value.toLocaleString("fa-IR", {
+      minimumIntegerDigits: 2,
+      useGrouping: false,
+    });
   return `${formatPart(minutes)}:${formatPart(seconds)}`;
 }
 
@@ -51,39 +52,48 @@ export default function TestDetailPage({ id }: { id: number }) {
   const [starting, setStarting] = useState(true);
   const [started, setStarted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submission, setSubmission] = useState<PracticeTestAttempt | null>(null);
-  const [startAttempt, setStartAttempt] = useState<PracticeTestAttempt | null>(null);
+  const [submission, setSubmission] = useState<PracticeTestAttempt | null>(
+    null,
+  );
+  const [startAttempt, setStartAttempt] = useState<PracticeTestAttempt | null>(
+    null,
+  );
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
   const startRequestRef = useRef<StartRequest | null>(null);
   const timeoutSubmissionRef = useRef<number | null>(null);
 
-  const startTest = useCallback(async (force = false) => {
-    setStarting(true);
-    setStartError("");
+  const startTest = useCallback(
+    async (force = false) => {
+      setStarting(true);
+      setStartError("");
 
-    if (force || startRequestRef.current?.id !== id) {
-      startRequestRef.current = {
-        id,
-        promise: studentApi.startTest(id),
-      };
-    }
-
-    const request = startRequestRef.current;
-    try {
-      const attempt = await request.promise;
-      setStartAttempt(attempt);
-      setStarted(true);
-    } catch (error) {
-      if (startRequestRef.current === request) {
-        startRequestRef.current = null;
+      if (force || startRequestRef.current?.id !== id) {
+        startRequestRef.current = {
+          id,
+          promise: studentApi.startTest(id),
+        };
       }
-      setStarted(false);
-      setStartError(getApiErrorMessage(error, "شروع آزمون ناموفق بود. دوباره تلاش کنید."));
-    } finally {
-      setStarting(false);
-    }
-  }, [id]);
+
+      const request = startRequestRef.current;
+      try {
+        const attempt = await request.promise;
+        setStartAttempt(attempt);
+        setStarted(true);
+      } catch (error) {
+        if (startRequestRef.current === request) {
+          startRequestRef.current = null;
+        }
+        setStarted(false);
+        setStartError(
+          getApiErrorMessage(error, "شروع آزمون ناموفق بود. دوباره تلاش کنید."),
+        );
+      } finally {
+        setStarting(false);
+      }
+    },
+    [id],
+  );
 
   useEffect(() => {
     let active = true;
@@ -97,16 +107,19 @@ export default function TestDetailPage({ id }: { id: number }) {
     timeoutSubmissionRef.current = null;
     setSubmitError("");
 
-    void studentApi.test(id)
+    void studentApi
+      .test(id)
       .then((result) => {
         if (active) setTest(result);
       })
       .catch((error) => {
         if (active) {
-          setLoadingError(getApiErrorMessage(
-            error,
-            "دریافت آزمون ناموفق بود یا به آن دسترسی ندارید.",
-          ));
+          setLoadingError(
+            getApiErrorMessage(
+              error,
+              "دریافت آزمون ناموفق بود یا به آن دسترسی ندارید.",
+            ),
+          );
         }
       });
 
@@ -121,11 +134,13 @@ export default function TestDetailPage({ id }: { id: number }) {
     () => questions.filter((question) => answers[question.id]?.trim()).length,
     [answers, questions],
   );
-  const allAnswered = questions.length > 0 && answeredCount === questions.length;
+  const allAnswered =
+    questions.length > 0 && answeredCount === questions.length;
   const resultsByQuestion = useMemo(
-    () => new Map(
-      (submission?.answers ?? []).map((answer) => [answer.question, answer]),
-    ),
+    () =>
+      new Map(
+        (submission?.answers ?? []).map((answer) => [answer.question, answer]),
+      ),
     [submission],
   );
 
@@ -141,7 +156,10 @@ export default function TestDetailPage({ id }: { id: number }) {
     const deadline = startedAt + Math.max(0, test.duration_minutes) * 60_000;
 
     const updateTimer = () => {
-      const nextSeconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      const nextSeconds = Math.max(
+        0,
+        Math.ceil((deadline - Date.now()) / 1000),
+      );
       setRemainingSeconds(nextSeconds);
       if (nextSeconds === 0) setTimedOut(true);
     };
@@ -157,31 +175,49 @@ export default function TestDetailPage({ id }: { id: number }) {
     setSubmitError("");
   }
 
-  const submitTest = useCallback(async (force = false) => {
-    if (
-      !test ||
-      !started ||
-      (!force && !allAnswered) ||
-      submitting ||
-      submission
-    ) return;
+  const submitTest = useCallback(
+    async (force = false) => {
+      if (
+        !test ||
+        !started ||
+        (!force && !allAnswered) ||
+        submitting ||
+        submission
+      )
+        return;
 
-    setSubmitting(true);
-    setSubmitError("");
-    try {
-      const result = await studentApi.submitTest(id, {
-        answers: questions.map((question) => ({
-          question: question.id,
-          answer_text: (answers[question.id] ?? "").trim(),
-        })),
-      });
-      setSubmission(result);
-    } catch (error) {
-      setSubmitError(getApiErrorMessage(error, "ثبت نهایی آزمون ناموفق بود. دوباره تلاش کنید."));
-    } finally {
-      setSubmitting(false);
-    }
-  }, [allAnswered, answers, id, questions, started, submission, submitting, test]);
+      setSubmitting(true);
+      setSubmitError("");
+      try {
+        const result = await studentApi.submitTest(id, {
+          answers: questions.map((question) => ({
+            question: question.id,
+            answer_text: (answers[question.id] ?? "").trim(),
+          })),
+        });
+        setSubmission(result);
+      } catch (error) {
+        setSubmitError(
+          getApiErrorMessage(
+            error,
+            "ثبت نهایی آزمون ناموفق بود. دوباره تلاش کنید.",
+          ),
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      allAnswered,
+      answers,
+      id,
+      questions,
+      started,
+      submission,
+      submitting,
+      test,
+    ],
+  );
 
   useEffect(() => {
     if (
@@ -191,22 +227,31 @@ export default function TestDetailPage({ id }: { id: number }) {
       submission ||
       submitting ||
       timeoutSubmissionRef.current === id
-    ) return;
+    )
+      return;
 
     timeoutSubmissionRef.current = id;
     void submitTest(true);
   }, [id, started, submission, submitTest, submitting, test, timedOut]);
 
   if (loadingError) {
-    return <div className="feedback-error rounded-2xl p-6" role="alert">{loadingError}</div>;
+    return (
+      <div className="feedback-error rounded-2xl p-6" role="alert">
+        {loadingError}
+      </div>
+    );
   }
-  if (!test) return <div className="p-10 text-center">در حال دریافت آزمون...</div>;
+  if (!test)
+    return <div className="p-10 text-center">در حال دریافت آزمون...</div>;
 
-  const inputsDisabled = !started || starting || timedOut || submitting || Boolean(submission);
+  const inputsDisabled =
+    !started || starting || timedOut || submitting || Boolean(submission);
 
   return (
     <section className="mx-auto max-w-4xl">
-      <Link href="/student/tests" className="brand-link text-sm">→ بازگشت به آزمون‌ها</Link>
+      <Link href="/student/tests" className="brand-link text-sm">
+        → بازگشت به آزمون‌ها
+      </Link>
 
       <header className="page-hero my-5 rounded-3xl p-7">
         <div className="flex flex-wrap justify-between gap-3">
@@ -216,7 +261,11 @@ export default function TestDetailPage({ id }: { id: number }) {
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-center">
             <p>{test.questions_count} سؤال</p>
-            <p className="mt-1 text-sm font-bold text-brand-accent" role="timer" aria-label="زمان باقی‌مانده">
+            <p
+              className="mt-1 text-sm font-bold text-brand-accent"
+              role="timer"
+              aria-label="زمان باقی‌مانده"
+            >
               {remainingSeconds == null
                 ? `${test.duration_minutes} دقیقه`
                 : formatRemainingTime(remainingSeconds)}
@@ -227,12 +276,18 @@ export default function TestDetailPage({ id }: { id: number }) {
       </header>
 
       {starting && (
-        <div className="feedback-warning mb-5 rounded-2xl p-4 text-sm" role="status">
+        <div
+          className="feedback-warning mb-5 rounded-2xl p-4 text-sm"
+          role="status"
+        >
           در حال شروع آزمون...
         </div>
       )}
       {startError && (
-        <div className="feedback-error mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4" role="alert">
+        <div
+          className="feedback-error mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
+          role="alert"
+        >
           <span>{startError}</span>
           <button
             type="button"
@@ -244,7 +299,10 @@ export default function TestDetailPage({ id }: { id: number }) {
         </div>
       )}
       {timedOut && !submission && (
-        <div className="feedback-warning mb-5 rounded-2xl p-4 text-sm" role="status">
+        <div
+          className="feedback-warning mb-5 rounded-2xl p-4 text-sm"
+          role="status"
+        >
           زمان آزمون پایان یافت؛ پاسخ‌های فعلی در حال ثبت هستند.
         </div>
       )}
@@ -253,23 +311,38 @@ export default function TestDetailPage({ id }: { id: number }) {
 
       <div className="space-y-4">
         {questions.map((question, index) => {
-          const options = Array.isArray(question.options) ? question.options : [];
-          const choiceOptions = question.question_type === "true_false"
-            ? [
-                { label: "صحیح", value: "true" },
-                { label: "غلط", value: "false" },
-              ]
-            : options.map((option) => ({
-                label: String(option),
-                value: String(option),
-              }));
+          const options = Array.isArray(question.options)
+            ? question.options
+            : [];
+          const choiceOptions =
+            question.question_type === "true_false"
+              ? [
+                  { label: "صحیح", value: "true" },
+                  { label: "غلط", value: "false" },
+                ]
+              : options.map((option) => ({
+                  label: String(option),
+                  value: String(option),
+                }));
           const model = questionTypeLabels[question.question_type] ?? "سایر";
+          const questionMedia = [
+            ...(question.media ?? []),
+            ...(question.video_url ? [{
+              video_url: question.video_url,
+              title: `ویدئوی سؤال ${(index + 1).toLocaleString("fa-IR")}`,
+            }] : []),
+            ...(question.audio_url ? [{
+              audio_url: question.audio_url,
+              title: `فایل صوتی سؤال ${(index + 1).toLocaleString("fa-IR")}`,
+            }] : []),
+          ];
           const result = resultsByQuestion.get(question.id);
-          const resultBorder = result?.is_correct === true
-            ? "var(--success)"
-            : result?.is_correct === false
-              ? "var(--destructive)"
-              : undefined;
+          const resultBorder =
+            result?.is_correct === true
+              ? "var(--success)"
+              : result?.is_correct === false
+                ? "var(--destructive)"
+                : undefined;
 
           return (
             <article
@@ -287,10 +360,16 @@ export default function TestDetailPage({ id }: { id: number }) {
               </h2>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span dir="rtl" className="rounded-full bg-accent-soft px-3 py-1.5 font-bold text-brand-primary">
+                <span
+                  dir="rtl"
+                  className="rounded-full bg-accent-soft px-3 py-1.5 font-bold text-brand-primary"
+                >
                   نمره: {questionScore(question.points)}
                 </span>
-                <span dir="rtl" className="rounded-full bg-secondary-soft px-3 py-1.5 font-bold text-brand-secondary dark:text-white">
+                <span
+                  dir="rtl"
+                  className="rounded-full bg-secondary-soft px-3 py-1.5 font-bold text-brand-secondary dark:text-white"
+                >
                   مدل: {model}
                 </span>
                 {result && (
@@ -314,10 +393,24 @@ export default function TestDetailPage({ id }: { id: number }) {
                 )}
               </div>
 
+              {questionMedia.length > 0 && (
+                <div dir="rtl">
+                  <PracticeTestMedia
+                    media={questionMedia}
+                    title={`رسانه سؤال ${(index + 1).toLocaleString("fa-IR")}`}
+                    description="برای پاسخ به این سؤال، فایل صوتی یا ویدئویی را پخش کنید."
+                    className="my-5 text-right"
+                  />
+                </div>
+              )}
+
               {choiceOptions.length ? (
-                <div className={question.question_type === "true_false"
-                  ? "mt-4 grid grid-cols-2 gap-3"
-                  : "mt-4 space-y-2"}
+                <div
+                  className={
+                    question.question_type === "true_false"
+                      ? "mt-4 grid grid-cols-2 gap-3"
+                      : "mt-4 space-y-2"
+                  }
                 >
                   {choiceOptions.map((option) => (
                     <label
@@ -347,7 +440,9 @@ export default function TestDetailPage({ id }: { id: number }) {
                   type="text"
                   value={answers[question.id] || ""}
                   disabled={inputsDisabled}
-                  onChange={(event) => updateAnswer(question.id, event.target.value)}
+                  onChange={(event) =>
+                    updateAnswer(question.id, event.target.value)
+                  }
                   className="mt-4 w-full rounded-xl border border-input bg-card p-3"
                   dir="ltr"
                   placeholder="پاسخ کوتاه خود را بنویسید..."
@@ -357,7 +452,9 @@ export default function TestDetailPage({ id }: { id: number }) {
                 <textarea
                   value={answers[question.id] || ""}
                   disabled={inputsDisabled}
-                  onChange={(event) => updateAnswer(question.id, event.target.value)}
+                  onChange={(event) =>
+                    updateAnswer(question.id, event.target.value)
+                  }
                   className="mt-4 min-h-28 w-full rounded-xl border border-input bg-card p-3"
                   dir="ltr"
                   placeholder="پاسخ خود را بنویسید..."
@@ -379,7 +476,8 @@ export default function TestDetailPage({ id }: { id: number }) {
         <div className="surface-card sticky bottom-4 mt-5 rounded-2xl p-4 shadow-[var(--shadow-brand-md)] sm:flex sm:items-center sm:justify-between sm:gap-4">
           <div>
             <p className="font-bold">
-              {answeredCount.toLocaleString("fa-IR")} از {questions.length.toLocaleString("fa-IR")} سؤال پاسخ داده شده
+              {answeredCount.toLocaleString("fa-IR")} از{" "}
+              {questions.length.toLocaleString("fa-IR")} سؤال پاسخ داده شده
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               پس از پاسخ‌دادن به همه سؤال‌ها، آزمون را ثبت نهایی کنید.
@@ -407,7 +505,10 @@ export default function TestDetailPage({ id }: { id: number }) {
       )}
 
       {submitError && (
-        <div className="feedback-error mt-4 rounded-xl p-4 text-sm" role="alert">
+        <div
+          className="feedback-error mt-4 rounded-xl p-4 text-sm"
+          role="alert"
+        >
           {submitError}
         </div>
       )}
@@ -416,11 +517,24 @@ export default function TestDetailPage({ id }: { id: number }) {
           <p className="font-bold">آزمون با موفقیت ثبت شد.</p>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
             {submission.total_score != null && submission.max_score != null && (
-              <p>امتیاز شما: {submission.total_score} از {submission.max_score}</p>
+              <p>
+                امتیاز شما: {submission.total_score} از {submission.max_score}
+              </p>
             )}
-            {submission.percentage != null && <p>درصد: {submission.percentage}٪</p>}
-            {submission.recommended_level && <p>سطح پیشنهادی: {submission.recommended_level}</p>}
+            {submission.percentage != null && (
+              <p>درصد: {submission.percentage}٪</p>
+            )}
+            {submission.recommended_level && (
+              <p>سطح پیشنهادی: {submission.recommended_level}</p>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="ghost-button mt-4 rounded-xl px-5 py-2.5 text-sm font-bold"
+          >
+            بازگشت
+          </button>
         </div>
       )}
     </section>
