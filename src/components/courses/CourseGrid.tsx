@@ -1,17 +1,7 @@
 import Link from "next/link";
 import { HiAcademicCap, HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
 import type { Course } from "@/lib/courses";
-
-const courseTypeLabels: Record<string, string> = {
-  general: "زبان عمومی",
-  ielts: "آیلتس",
-};
-
-function formatPrice(course: Course) {
-  return course.is_free || course.price === 0
-    ? "رایگان"
-    : `${course.price.toLocaleString("fa-IR")} تومان`;
-}
+import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
 
 export default function CourseGrid({
   initialCourses,
@@ -31,7 +21,7 @@ export default function CourseGrid({
                   سطح {course.level_detail.code}
                 </span>
                 <span className="rounded-full bg-secondary-soft px-3 py-1 text-xs font-bold text-brand-secondary dark:text-white">
-                  {courseTypeLabels[course.course_type] ?? course.course_type}
+                  {formatCourseType(course.course_type)}
                 </span>
                 {course.is_recommended && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-warning">
@@ -67,7 +57,7 @@ export default function CourseGrid({
                 <div>
                   <p className="text-xs text-muted-foreground">هزینه دوره</p>
                   <strong className={`mt-1 block text-lg ${course.is_free ? "text-success" : "text-foreground"}`}>
-                    {formatPrice(course)}
+                    {formatCoursePrice(course)}
                   </strong>
                   <span className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold ${course.has_access ? "text-success" : "text-muted-foreground"}`}>
                     {course.has_access ? "دسترسی برای شما فعال است" : (

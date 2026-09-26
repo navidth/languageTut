@@ -3,45 +3,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { getApiErrorMessage } from "@/lib/apiErrors";
+import { formatRemainingTime } from "@/lib/format";
 import {
   studentApi,
   type PracticeTest,
   type PracticeTestAttempt,
 } from "@/lib/studentApi";
 import PracticeTestMedia from "./PracticeTestMedia";
+import TestQuestionCard from "./TestQuestionCard";
+
+export { formatRemainingTime } from "@/lib/format";
 
 type StartRequest = {
   id: number;
   promise: Promise<PracticeTestAttempt>;
 };
-
-const questionTypeLabels: Record<string, string> = {
-  multiple_choice: "چندگزینه‌ای",
-  true_false: "درست / نادرست",
-  short_answer: "پاسخ کوتاه",
-  essay: "تشریحی",
-  speaking_prompt: "پاسخ گفتاری",
-};
-
-function questionScore(points: string | undefined) {
-  if (!points) return "—";
-  const numericPoints = Number(points);
-  return Number.isFinite(numericPoints)
-    ? numericPoints.toLocaleString("fa-IR", { maximumFractionDigits: 2 })
-    : points;
-}
-
-export function formatRemainingTime(totalSeconds: number) {
-  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(safeSeconds / 60);
-  const seconds = safeSeconds % 60;
-  const formatPart = (value: number) =>
-    value.toLocaleString("fa-IR", {
-      minimumIntegerDigits: 2,
-      useGrouping: false,
-    });
-  return `${formatPart(minutes)}:${formatPart(seconds)}`;
-}
 
 export default function TestDetailPage({ id }: { id: number }) {
   const [test, setTest] = useState<PracticeTest | null>(null);
@@ -169,11 +145,11 @@ export default function TestDetailPage({ id }: { id: number }) {
     return () => window.clearInterval(timer);
   }, [startAttempt?.started_at, started, submission, test]);
 
-  function updateAnswer(questionId: number, value: string) {
+  const updateAnswer = useCallback((questionId: number, value: string) => {
     if (!started || timedOut || submission) return;
     setAnswers((current) => ({ ...current, [questionId]: value }));
     setSubmitError("");
-  }
+  }, [started, submission, timedOut]);
 
   const submitTest = useCallback(
     async (force = false) => {
@@ -310,162 +286,18 @@ export default function TestDetailPage({ id }: { id: number }) {
       <PracticeTestMedia media={test.media} />
 
       <div className="space-y-4">
-        {questions.map((question, index) => {
-          const options = Array.isArray(question.options)
-            ? question.options
-            : [];
-          const choiceOptions =
-            question.question_type === "true_false"
-              ? [
-                  { label: "صحیح", value: "true" },
-                  { label: "غلط", value: "false" },
-                ]
-              : options.map((option) => ({
-                  label: String(option),
-                  value: String(option),
-                }));
-          const model = questionTypeLabels[question.question_type] ?? "سایر";
-          const questionMedia = [
-            ...(question.media ?? []),
-            ...(question.video_url ? [{
-              video_url: question.video_url,
-              title: `ویدئوی سؤال ${(index + 1).toLocaleString("fa-IR")}`,
-            }] : []),
-            ...(question.audio_url ? [{
-              audio_url: question.audio_url,
-              title: `فایل صوتی سؤال ${(index + 1).toLocaleString("fa-IR")}`,
-            }] : []),
-          ];
-          const result = resultsByQuestion.get(question.id);
-          const resultBorder =
-            result?.is_correct === true
-              ? "var(--success)"
-              : result?.is_correct === false
-                ? "var(--destructive)"
-                : undefined;
-
-          return (
-            <article
-              key={question.id}
-              data-testid={`question-${question.id}`}
-              dir="ltr"
-              style={{ borderColor: resultBorder }}
-              className="surface-card rounded-2xl p-6 text-left"
-            >
-              <h2 className="font-bold leading-8">
-                <span className="mr-2 text-brand-accent">
-                  {(index + 1).toLocaleString("fa-IR")}.
-                </span>
-                {question.question_text}
-              </h2>
-
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span
-                  dir="rtl"
-                  className="rounded-full bg-accent-soft px-3 py-1.5 font-bold text-brand-primary"
-                >
-                  نمره: {questionScore(question.points)}
-                </span>
-                <span
-                  dir="rtl"
-                  className="rounded-full bg-secondary-soft px-3 py-1.5 font-bold text-brand-secondary dark:text-white"
-                >
-                  مدل: {model}
-                </span>
-                {result && (
-                  <span
-                    dir="rtl"
-                    className={`rounded-full px-3 py-1.5 font-bold ${
-                      result.is_correct === true
-                        ? "bg-success-soft text-success"
-                        : result.is_correct === false
-                          ? "bg-destructive-soft text-destructive"
-                          : "bg-accent-soft text-warning"
-                    }`}
-                  >
-                    {result.is_correct === true
-                      ? "پاسخ صحیح"
-                      : result.is_correct === false
-                        ? "پاسخ اشتباه"
-                        : "در انتظار بررسی"}
-                    {` · نمره دریافتی: ${result.score}`}
-                  </span>
-                )}
-              </div>
-
-              {questionMedia.length > 0 && (
-                <div dir="rtl">
-                  <PracticeTestMedia
-                    media={questionMedia}
-                    title={`رسانه سؤال ${(index + 1).toLocaleString("fa-IR")}`}
-                    description="برای پاسخ به این سؤال، فایل صوتی یا ویدئویی را پخش کنید."
-                    className="my-5 text-right"
-                  />
-                </div>
-              )}
-
-              {choiceOptions.length ? (
-                <div
-                  className={
-                    question.question_type === "true_false"
-                      ? "mt-4 grid grid-cols-2 gap-3"
-                      : "mt-4 space-y-2"
-                  }
-                >
-                  {choiceOptions.map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${
-                        answers[question.id] === option.value
-                          ? "border-brand-accent bg-accent-soft text-brand-primary"
-                          : "border-border hover:border-brand-accent"
-                      } ${question.question_type === "true_false" ? "justify-center" : ""} ${
-                        inputsDisabled ? "cursor-not-allowed opacity-60" : ""
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={`q-${question.id}`}
-                        value={option.value}
-                        checked={answers[question.id] === option.value}
-                        disabled={inputsDisabled}
-                        onChange={() => updateAnswer(question.id, option.value)}
-                      />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              ) : question.question_type === "short_answer" ? (
-                <input
-                  type="text"
-                  value={answers[question.id] || ""}
-                  disabled={inputsDisabled}
-                  onChange={(event) =>
-                    updateAnswer(question.id, event.target.value)
-                  }
-                  className="mt-4 w-full rounded-xl border border-input bg-card p-3"
-                  dir="ltr"
-                  placeholder="پاسخ کوتاه خود را بنویسید..."
-                  aria-label={`پاسخ سؤال ${(index + 1).toLocaleString("fa-IR")}`}
-                />
-              ) : (
-                <textarea
-                  value={answers[question.id] || ""}
-                  disabled={inputsDisabled}
-                  onChange={(event) =>
-                    updateAnswer(question.id, event.target.value)
-                  }
-                  className="mt-4 min-h-28 w-full rounded-xl border border-input bg-card p-3"
-                  dir="ltr"
-                  placeholder="پاسخ خود را بنویسید..."
-                  aria-label={`پاسخ سؤال ${(index + 1).toLocaleString("fa-IR")}`}
-                />
-              )}
-            </article>
-          );
-        })}
+        {questions.map((question, index) => (
+          <TestQuestionCard
+            key={question.id}
+            question={question}
+            index={index}
+            answer={answers[question.id] ?? ""}
+            disabled={inputsDisabled}
+            result={resultsByQuestion.get(question.id)}
+            onAnswerChange={updateAnswer}
+          />
+        ))}
       </div>
-
       {!questions.length && (
         <div className="surface-card rounded-2xl p-10 text-center text-muted-foreground">
           سؤالی برای این آزمون ثبت نشده است.

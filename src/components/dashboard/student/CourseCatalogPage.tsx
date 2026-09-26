@@ -1,41 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import CourseGrid from "@/components/courses/CourseGrid";
+import AsyncState from "@/components/ui/AsyncState";
 import Pagination from "@/components/ui/Pagination";
-import { getApiErrorMessage } from "@/lib/apiErrors";
-import type { Course } from "@/lib/courses";
-import { studentApi } from "@/lib/studentApi";
+import { fetchCourses } from "@/store/coursesSlice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 export default function CourseCatalogPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const dispatch = useAppDispatch();
   const [page, setPage] = useState(1);
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState<string | null>(null);
-  const [previous, setPrevious] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const loadCourses = useCallback(async (requestedPage: number) => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const data = await studentApi.courses(requestedPage);
-      setCourses(data.results);
-      setCount(data.count);
-      setNext(data.next);
-      setPrevious(data.previous);
-    } catch (reason) {
-      setError(getApiErrorMessage(reason, "دریافت دوره‌ها از سرور ناموفق بود."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const entry = useAppSelector((state) => state.courses.pages[page]);
+  const data = entry?.data;
+  const courses = data?.results ?? [];
+  const loading = !entry || entry.status === "loading";
 
   useEffect(() => {
-    void loadCourses(page);
-  }, [loadCourses, page]);
+    void dispatch(fetchCourses(page));
+  }, [dispatch, page]);
 
   return (
     <section className="mx-auto max-w-7xl">
@@ -43,24 +25,26 @@ export default function CourseCatalogPage() {
         <p className="page-hero-muted mb-2 text-sm">پنل دانش‌آموز</p>
         <h1 className="text-3xl font-black">همه دوره‌ها</h1>
         <p className="page-hero-muted mt-2">
-          دوره مناسب سطح خود را از میان {count.toLocaleString("fa-IR")} دوره انتخاب کنید.
+          دوره مناسب سطح خود را از میان {(data?.count ?? 0).toLocaleString("fa-IR")} دوره انتخاب کنید.
         </p>
       </div>
 
-      {loading && <Status text="در حال دریافت دوره‌ها..." />}
-      {error && <Status text={error} retry={() => void loadCourses(page)} />}
-      {!loading && !error && courses.length === 0 && (
-        <Status text="در حال حاضر دوره‌ای برای نمایش وجود ندارد." />
+      {loading && <AsyncState message="در حال دریافت دوره‌ها..." />}
+      {entry?.status === "failed" && (
+        <AsyncState message={entry.error ?? "دریافت دوره‌ها ناموفق بود."} retry={() => void dispatch(fetchCourses({ page, force: true }))} />
       )}
-      {!loading && !error && courses.length > 0 && (
+      {!loading && entry?.status !== "failed" && courses.length === 0 && (
+        <AsyncState message="در حال حاضر دوره‌ای برای نمایش وجود ندارد." />
+      )}
+      {!loading && entry?.status !== "failed" && courses.length > 0 && data && (
         <>
           <CourseGrid initialCourses={courses} detailBasePath="/student/all-courses" />
           <Pagination
             currentPage={page}
-            count={count}
+            count={data.count}
             resultsCount={courses.length}
-            next={next}
-            previous={previous}
+            next={data.next}
+            previous={data.previous}
             onPageChange={setPage}
             loading={loading}
             ariaLabel="صفحه‌بندی همه دوره‌ها"
@@ -68,18 +52,5 @@ export default function CourseCatalogPage() {
         </>
       )}
     </section>
-  );
-}
-
-function Status({ text, retry }: { text: string; retry?: () => void }) {
-  return (
-    <div className="surface-card rounded-2xl p-10 text-center text-muted-foreground">
-      <p>{text}</p>
-      {retry && (
-        <button onClick={retry} className="brand-button mt-4 rounded-xl px-5 py-2">
-          تلاش دوباره
-        </button>
-      )}
-    </div>
   );
 }

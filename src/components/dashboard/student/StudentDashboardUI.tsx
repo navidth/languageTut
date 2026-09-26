@@ -1,38 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
-import { studentApi, type MyProgress } from "@/lib/studentApi";
-import type { User } from "@/lib/auth";
-import { getApiErrorMessage } from "@/lib/apiErrors";
+import AsyncState from "@/components/ui/AsyncState";
+import { fetchStudentOverview } from "@/store/studentSlice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { LanguageLevelGauge } from "./LanguageLevelGauge";
 
 export default function StudentDashboardUI() {
-  const [user, setUser] = useState<User | null>(null);
-  const [progress, setProgress] = useState<MyProgress>({
-    courses: [],
-    lessons: [],
-  });
-  const [enrollments, setEnrollments] = useState(0);
-  const [error, setError] = useState("");
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
+  const overview = useAppSelector((state) => state.student.overview);
 
   useEffect(() => {
-    Promise.all([
-      studentApi.profile(),
-      studentApi.progress(),
-      studentApi.enrollments(),
-    ])
-      .then(([u, p, e]) => {
-        setUser(u);
-        setProgress(p);
-        setEnrollments(e.count);
-      })
-      .catch((error) =>
-        setError(getApiErrorMessage(error, "دریافت اطلاعات داشبورد ناموفق بود.")),
-      );
-  }, []);
+    void dispatch(fetchStudentOverview());
+  }, [dispatch]);
 
-  const completed = progress.lessons.filter(
+  const completed = overview.progress.lessons.filter(
     (x) => x.status === "completed",
   ).length;
   return (
@@ -46,10 +30,15 @@ export default function StudentDashboardUI() {
           وضعیت یادگیری و دسترسی سریع به محتوای آموزشی
         </p>
       </div>
-      {error && (
-        <div className="feedback-warning mb-5 rounded-2xl p-4" role="alert">
-          {error}
-        </div>
+      {overview.status === "loading" && !overview.lastFetched && (
+        <AsyncState message="در حال دریافت اطلاعات داشبورد..." className="mb-5" />
+      )}
+      {overview.error && (
+        <AsyncState
+          message={overview.error}
+          retry={() => void dispatch(fetchStudentOverview({ force: true }))}
+          className="mb-5"
+        />
       )}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="surface-card rounded-3xl p-5">
@@ -58,7 +47,7 @@ export default function StudentDashboardUI() {
         </div>
         <Stat
           title="کورس‌های ثبت‌نام‌شده"
-          value={enrollments}
+          value={overview.enrollmentCount}
           link="/student/courses"
         />
         <Stat
@@ -85,11 +74,11 @@ export default function StudentDashboardUI() {
           </Link>
         ))}
       </div>
-      {progress.courses.length > 0 && (
+      {overview.progress.courses.length > 0 && (
         <div className="surface-card mt-8 rounded-3xl p-6">
           <h2 className="mb-5 text-xl font-black">پیشرفت کورس‌ها</h2>
           <div className="space-y-5">
-            {progress.courses.map((x) => {
+            {overview.progress.courses.map((x) => {
               const percent = Number(x.progress_percent || 0);
               return (
                 <div key={x.id}>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import AboutSection from "@/components/landing/AboutSection";
 import FAQSection, { faqItems } from "@/components/landing/FAQSection";
-import FinalCTASection from "@/components/landing/FinalCTASection";
 import HeroSplit from "@/components/landing/HeroSplit";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import LandingAuthCheck from "@/components/landing/LandingAuthCheck";

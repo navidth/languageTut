@@ -17,7 +17,7 @@ import {
 import { HiEye, HiEyeOff, HiLockClosed, HiMail, HiUser } from "react-icons/hi";
 import type { User } from "@/lib/auth";
 import type { AuthenticationMode } from "@/lib/authFlow";
-import { login, loadMe, register } from "@/store/authSlice";
+import { login, register } from "@/store/authSlice";
 import { useAppDispatch } from "@/store/hooks";
 
 type AuthTab = AuthenticationMode;
@@ -50,6 +50,7 @@ export default function AuthenticationModal({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const initialFocusTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -57,8 +58,12 @@ export default function AuthenticationModal({
     setFormError(profileError);
     setFieldErrors({});
     setPasswordVisible(false);
-    const focusTimer = window.setTimeout(() => emailInputRef.current?.focus(), 80);
-    return () => window.clearTimeout(focusTimer);
+    initialFocusTimerRef.current = window.setTimeout(() => emailInputRef.current?.focus(), 80);
+    return () => {
+      if (initialFocusTimerRef.current !== null) {
+        window.clearTimeout(initialFocusTimerRef.current);
+      }
+    };
   }, [open, profileError]);
 
   useEffect(() => {
@@ -68,6 +73,10 @@ export default function AuthenticationModal({
 
   function selectTab(nextTab: AuthTab) {
     if (submitting) return;
+    if (initialFocusTimerRef.current !== null) {
+      window.clearTimeout(initialFocusTimerRef.current);
+      initialFocusTimerRef.current = null;
+    }
     setTab(nextTab);
     setFormError("");
     setFieldErrors({});
@@ -109,21 +118,20 @@ export default function AuthenticationModal({
     setFormError("");
     try {
       if (tab === "login") {
-        await dispatch(login({ email: email.trim(), password })).unwrap();
+        const latestUser = await dispatch(login({ email: email.trim(), password })).unwrap();
+        setPassword("");
+        setConfirmPassword("");
+        onAuthenticated(latestUser, tab);
       } else {
-        await dispatch(register({
+        const latestUser = await dispatch(register({
           email: email.trim(),
           password,
           full_name: fullName.trim(),
         })).unwrap();
+        setPassword("");
+        setConfirmPassword("");
+        onAuthenticated(latestUser, tab);
       }
-
-      // Both auth thunks already fetch /me; this second read intentionally
-      // resolves routing against the freshest profile from the server.
-      const latestUser = await dispatch(loadMe()).unwrap();
-      setPassword("");
-      setConfirmPassword("");
-      onAuthenticated(latestUser, tab);
     } catch (reason) {
       setFormError(String(reason || "ورود به حساب کاربری ناموفق بود."));
     } finally {

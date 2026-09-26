@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppSelector } from "@/store/hooks";
+import { formatPersianDate } from "@/lib/date";
 
 export default function TeacherDashboardUI() {
   const { user, status } = useAppSelector((state) => state.auth);
@@ -50,7 +51,7 @@ export default function TeacherDashboardUI() {
             <div>
               <dt className="text-sm text-muted-foreground">تاریخ عضویت</dt>
               <dd className="font-medium">
-                {new Date(user.date_joined).toLocaleDateString("fa-IR")}
+                {formatPersianDate(user.date_joined)}
               </dd>
             </div>
           </dl>

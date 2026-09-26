@@ -1,4 +1,4 @@
-import type { SkillName } from "@/lib/skills";
+import type { SkillName } from "./skills";
 
 export const skillLabels: Record<SkillName, string> = {
   listening: "شنیداری",
@@ -13,3 +13,9 @@ export const skillDescriptions: Record<SkillName, string> = {
   writing: "ساختاردهی ایده‌ها و نوشتن پاسخ‌های دقیق و منسجم",
   speaking: "افزایش روانی، دقت و اعتمادبه‌نفس در مکالمه انگلیسی",
 };
+
+export function formatSkillName(name: string | null | undefined, fallback = "درس") {
+  return name && name in skillLabels
+    ? skillLabels[name as SkillName]
+    : name || fallback;
+}

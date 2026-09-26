@@ -105,7 +105,7 @@ describe("AuthenticationModal", () => {
     expect(screen.getByRole("button", { name: "پنهان کردن رمز عبور" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("logs in, refreshes the profile, and reports the authenticated user", async () => {
+  it("logs in and reports the authenticated user without a duplicate profile request", async () => {
     const user = userEvent.setup();
     const { onAuthenticated } = renderModal();
 
@@ -120,8 +120,8 @@ describe("AuthenticationModal", () => {
       email: "learner@example.com",
       password: "secret-password",
     });
-    expect(mocks.loadMe).toHaveBeenCalledOnce();
-    expect(mocks.dispatch).toHaveBeenCalledTimes(2);
+    expect(mocks.loadMe).not.toHaveBeenCalled();
+    expect(mocks.dispatch).toHaveBeenCalledOnce();
   });
 
   it("closes from the header button", async () => {

@@ -1,120 +1,8 @@
+import { useId, useMemo } from "react";
 import { HiExternalLink, HiVideoCamera, HiVolumeUp } from "react-icons/hi";
-import { BACKEND_BASE_URL } from "@/lib/apiClient";
-import type { MediaAsset, MediaAssetObject, PlayableMedia, PlayableMediaKind } from "@/lib/media";
+import { normalizeMediaAssets, type MediaAsset } from "@/lib/media";
 
-function firstText(...values: unknown[]) {
-  return values.find((value): value is string =>
-    typeof value === "string" && value.trim().length > 0
-  )?.trim();
-}
-
-function absoluteMediaUrl(value: unknown) {
-  if (typeof value !== "string" || !value.trim()) return undefined;
-
-  try {
-    const url = new URL(value.trim(), `${BACKEND_BASE_URL.replace(/\/+$/, "")}/`);
-    return ["http:", "https:"].includes(url.protocol) ? url.toString() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function mediaKind(media: MediaAssetObject, url: string): PlayableMediaKind | undefined {
-  if (firstText(media.audio_url, media.audio)) return "audio";
-  if (firstText(media.video_url, media.video)) return "video";
-
-  const hint = firstText(
-    media.media_type,
-    media.type,
-    media.kind,
-    media.media_kind,
-    media.mime_type,
-    media.content_type,
-  )?.toLowerCase();
-
-  if (hint && /(audio|voice|sound)/.test(hint)) return "audio";
-  if (hint && /(video|movie|film)/.test(hint)) return "video";
-
-  let pathname = url.toLowerCase();
-  try {
-    pathname = new URL(url).pathname.toLowerCase();
-  } catch {
-    // The URL has already been validated; the full string remains a useful hint.
-  }
-
-  if (/\.(mp3|wav|m4a|aac|oga|ogg|opus|flac)$/.test(pathname)) return "audio";
-  if (/\.(mp4|m4v|mov|webm|mkv|avi)$/.test(pathname)) return "video";
-  return undefined;
-}
-
-function playableMimeType(...values: unknown[]) {
-  const mimeType = firstText(...values)?.toLowerCase();
-  return mimeType && /^(audio|video)\/[a-z0-9.+-]+$/.test(mimeType)
-    ? mimeType
-    : undefined;
-}
-
-export function normalizeMediaAssets(
-  mediaItems: MediaAsset[] | null | undefined,
-  labels: { audio: string; video: string } = {
-    audio: "فایل صوتی",
-    video: "ویدئو",
-  },
-): PlayableMedia[] {
-  if (!Array.isArray(mediaItems)) return [];
-
-  return mediaItems.flatMap((media, index) => {
-    if (typeof media === "string") {
-      const url = absoluteMediaUrl(media);
-      if (!url) return [];
-      const kind = mediaKind({}, url);
-      if (!kind) return [];
-      return [{
-        id: `${url}-${index}`,
-        kind,
-        url,
-        title: labels[kind],
-      }];
-    }
-
-    const source = firstText(
-      media.stream_url,
-      media.video_url,
-      media.audio_url,
-      media.video,
-      media.audio,
-      media.file_url,
-      media.media_url,
-      media.media_file,
-      media.url,
-      media.file,
-      media.src,
-    );
-    const url = absoluteMediaUrl(source);
-    if (!url) return [];
-
-    const kind = mediaKind(media, url);
-    if (!kind) return [];
-
-    const title = firstText(media.title, media.caption, media.name) ?? labels[kind];
-    const poster = absoluteMediaUrl(firstText(
-      media.poster_url,
-      media.poster,
-      media.thumbnail_url,
-      media.thumbnail,
-    ));
-
-    return [{
-      id: String(media.id ?? `${url}-${index}`),
-      kind,
-      url,
-      title,
-      description: firstText(media.description),
-      mimeType: playableMimeType(media.mime_type, media.content_type),
-      poster,
-    }];
-  });
-}
+export { normalizeMediaAssets } from "@/lib/media";
 
 type MediaGalleryProps = {
   media: MediaAsset[] | null | undefined;
@@ -137,8 +25,12 @@ export default function MediaGallery({
   limit,
   className = "",
 }: MediaGalleryProps) {
-  const allMedia = normalizeMediaAssets(media, { audio: audioLabel, video: videoLabel });
+  const allMedia = useMemo(
+    () => normalizeMediaAssets(media, { audio: audioLabel, video: videoLabel }),
+    [audioLabel, media, videoLabel],
+  );
   const playableMedia = typeof limit === "number" ? allMedia.slice(0, limit) : allMedia;
+  const headingId = useId();
   if (!playableMedia.length) return null;
 
   if (compact) {
@@ -179,8 +71,6 @@ export default function MediaGallery({
       </div>
     );
   }
-
-  const headingId = `media-gallery-${playableMedia.map((item) => item.id).join("-").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40)}`;
 
   return (
     <section className={`surface-card rounded-3xl p-5 sm:p-6 ${className}`} aria-labelledby={headingId}>

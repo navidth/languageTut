@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiCheckCircle, HiLockClosed } from "react-icons/hi";
 import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
@@ -12,20 +12,28 @@ import { useAppSelector } from "@/store/hooks";
 export default function CourseStartAction({ initialCourse }: { initialCourse: Course }) {
   const router = useRouter();
   const { startAuthFlow, busy: authBusy } = useAuthFlow();
-  const { status, user } = useAppSelector((state) => state.auth);
+  const status = useAppSelector((state) => state.auth.status);
+  const user = useAppSelector((state) => state.auth.user);
   const [course, setCourse] = useState(initialCourse);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const courseRef = useRef(initialCourse);
+  const lastAccessCheckRef = useRef(0);
 
-  const refreshAccess = useCallback(async () => {
+  const refreshAccess = useCallback(async (force = false) => {
+    if (!force && Date.now() - lastAccessCheckRef.current < 30_000) {
+      return courseRef.current;
+    }
     const latestCourse = await coursesApi.get(initialCourse.id);
+    courseRef.current = latestCourse;
+    lastAccessCheckRef.current = Date.now();
     setCourse(latestCourse);
     return latestCourse;
   }, [initialCourse.id]);
 
   useEffect(() => {
     if (status !== "authenticated" || user?.role !== "student") return;
-    void refreshAccess().catch(() => undefined);
+    void refreshAccess(true).catch(() => undefined);
   }, [refreshAccess, status, user?.role]);
 
   function openLessons() {
@@ -63,7 +71,7 @@ export default function CourseStartAction({ initialCourse }: { initialCourse: Co
         return;
       }
 
-      const activated = await refreshAccess();
+      const activated = await refreshAccess(true);
       if (!activated.has_access) {
         throw new Error(purchase.detail || "دسترسی دوره هنوز فعال نشده است.");
       }

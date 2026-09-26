@@ -1,6 +1,5 @@
 "use client";
 
-import useWindows from "@/hooks/useWindows";
 import { DarkThemeToggle, Navbar } from "flowbite-react";
 import { useState } from "react";
 import { HiOutlineMenu } from "react-icons/hi";
@@ -13,18 +12,13 @@ import MobileMenu from "./MobileMenu";
 export default function NavbarIndex() {
   const [open, setOpen] = useState(false);
   const pathName = usePathname();
-  const size = useWindows();
 
   return (
     <>
       <Navbar
         dir="rtl"
         fluid
-        className={`z-50 border-b border-border !bg-[var(--glass)] shadow-[var(--shadow-brand-sm)] backdrop-blur-xl ${
-          size && size.width > 640
-            ? "sticky top-0 w-full px-3 "
-            : "fixed top-4 left-1/2 w-[calc(100%-32px)] max-w-[1000px] -translate-x-1/2 rounded-2xl border"
-        }`}
+        className="fixed left-1/2 top-4 z-50 w-[calc(100%-32px)] max-w-[1000px] -translate-x-1/2 rounded-2xl border border-border !bg-[var(--glass)] shadow-[var(--shadow-brand-sm)] backdrop-blur-xl sm:sticky sm:top-0 sm:w-full sm:max-w-none sm:translate-x-0 sm:rounded-none sm:border-x-0 sm:px-3"
       >
         <Brand />
         <MenuDesktop pathName={pathName} />

@@ -1,32 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HiAcademicCap, HiCheckCircle, HiCollection, HiLockClosed } from "react-icons/hi";
 import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
 import MediaGallery from "@/components/media/MediaGallery";
 import Pagination from "@/components/ui/Pagination";
+import AsyncState from "@/components/ui/AsyncState";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 import { coursesApi, type Course, type Lesson, type PaginatedLessons } from "@/lib/courses";
+import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
+import { formatSkillName } from "@/lib/skillPresentation";
 import { studentApi, type CourseProgress } from "@/lib/studentApi";
-import { useAppSelector } from "@/store/hooks";
-
-const skillNames: Record<string, string> = {
-  listening: "شنیداری",
-  reading: "خواندن",
-  writing: "نوشتن",
-  speaking: "مکالمه",
-};
-
-function formatPrice(course: Course) {
-  return course.is_free || course.price === 0
-    ? "رایگان"
-    : `${course.price.toLocaleString("fa-IR")} تومان`;
-}
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { invalidateStudentProgress } from "@/store/studentSlice";
 
 export default function StudentCourseDetailPage({ courseId }: { courseId: number }) {
+  const dispatch = useAppDispatch();
   const { startAuthFlow } = useAuthFlow();
-  const { status: authStatus, user } = useAppSelector((state) => state.auth);
+  const authStatus = useAppSelector((state) => state.auth.status);
+  const user = useAppSelector((state) => state.auth.user);
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<PaginatedLessons | null>(null);
   const [progress, setProgress] = useState<CourseProgress | null>(null);
@@ -38,20 +31,26 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
   const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
   const [lessonFeedback, setLessonFeedback] = useState<Record<number, { type: "success" | "error"; text: string }>>({});
   const [notice, setNotice] = useState("");
+  const courseRef = useRef<Course | null>(null);
+  const progressLoadedRef = useRef(false);
 
   const loadProgress = useCallback(async () => {
     try {
       setProgress(await studentApi.courseProgress(courseId));
+      progressLoadedRef.current = true;
     } catch {
       setProgress(null);
     }
   }, [courseId]);
 
-  const load = useCallback(async (requestedPage: number) => {
+  const load = useCallback(async (requestedPage: number, refreshCourse = false) => {
     setLoading(true);
     setError("");
     try {
-      const latestCourse = await coursesApi.get(courseId);
+      const latestCourse = refreshCourse || !courseRef.current
+        ? await coursesApi.get(courseId)
+        : courseRef.current;
+      courseRef.current = latestCourse;
       setCourse(latestCourse);
 
       if (!latestCourse.has_access) {
@@ -62,7 +61,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
 
       const [lessonData] = await Promise.all([
         coursesApi.lessons(courseId, requestedPage),
-        loadProgress(),
+        progressLoadedRef.current ? Promise.resolve() : loadProgress(),
       ]);
       setLessons(lessonData);
     } catch (reason) {
@@ -100,7 +99,8 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
       }
 
       setNotice(purchase.detail || "دسترسی دوره فعال شد. اکنون می‌توانید درس‌ها را شروع کنید.");
-      await load(page);
+      progressLoadedRef.current = false;
+      await load(page, true);
     } catch (reason) {
       setError(getApiErrorMessage(reason, "فعال‌سازی دوره ناموفق بود."));
     } finally {
@@ -149,6 +149,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
         }));
       }
       await loadProgress();
+      dispatch(invalidateStudentProgress());
     } catch (reason) {
       setLessonFeedback((current) => ({
         ...current,
@@ -162,9 +163,9 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
     }
   }
 
-  if (loading && !course) return <Status text="در حال دریافت اطلاعات دوره..." />;
-  if (error && !course) return <Status text={error} retry={() => void load(page)} />;
-  if (!course) return <Status text="دوره پیدا نشد." />;
+  if (loading && !course) return <AsyncState message="در حال دریافت اطلاعات دوره..." />;
+  if (error && !course) return <AsyncState message={error} retry={() => void load(page, true)} />;
+  if (!course) return <AsyncState message="دوره پیدا نشد." />;
 
   const progressValue = Math.min(100, Math.max(0, Number(progress?.progress_percent ?? 0)));
 
@@ -177,7 +178,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
           <div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-brand-accent px-3 py-1 text-xs font-black text-brand-primary">سطح {course.level_detail.code}</span>
-              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold">{course.course_type === "ielts" ? "آیلتس" : "زبان عمومی"}</span>
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold">{formatCourseType(course.course_type)}</span>
               {course.is_recommended && <span className="rounded-full border border-brand-accent/30 bg-brand-accent/10 px-3 py-1 text-xs font-bold text-brand-accent">پیشنهادی</span>}
             </div>
             <h1 className="mt-6 text-3xl font-black leading-tight md:text-5xl">{course.title}</h1>
@@ -186,7 +187,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
             <p className="text-xs text-white/55">هزینه دوره</p>
-            <strong className="mt-1 block text-2xl text-brand-accent">{formatPrice(course)}</strong>
+            <strong className="mt-1 block text-2xl text-brand-accent">{formatCoursePrice(course)}</strong>
             <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white/80">
               {course.has_access ? <><HiCheckCircle className="size-5 text-success" />دسترسی فعال است</> : <><HiLockClosed className="size-5 text-brand-accent" />نیاز به فعال‌سازی</>}
             </div>
@@ -235,9 +236,9 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
         {!course.has_access ? (
           <div className="surface-card rounded-2xl p-8 text-center"><HiLockClosed className="mx-auto size-8 text-brand-accent" /><p className="mt-4 font-bold">ابتدا دسترسی دوره را فعال کنید.</p></div>
         ) : loading ? (
-          <Status text="در حال دریافت درس‌ها..." />
+          <AsyncState message="در حال دریافت درس‌ها..." />
         ) : !lessons?.results.length ? (
-          <Status text="هنوز درسی برای این دوره منتشر نشده است." />
+          <AsyncState message="هنوز درسی برای این دوره منتشر نشده است." />
         ) : (
           <>
             <ol className="space-y-5">
@@ -278,7 +279,7 @@ function LessonCard({ lesson, busy, active, feedback, action, toggle }: {
   return (
     <li id={`lesson-${lesson.id}`} className={`surface-card scroll-mt-24 overflow-hidden rounded-3xl p-6 transition ${active ? "ring-2 ring-brand-accent/40" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><span className="rounded-full bg-secondary-soft px-3 py-1 text-xs font-bold text-brand-secondary dark:text-white">{skillNames[lesson.skill_detail.name] ?? lesson.skill_detail.name}</span><h3 className="mt-4 text-xl font-black">{lesson.title}</h3></div>
+        <div><span className="rounded-full bg-secondary-soft px-3 py-1 text-xs font-bold text-brand-secondary dark:text-white">{formatSkillName(lesson.skill_detail.name)}</span><h3 className="mt-4 text-xl font-black">{lesson.title}</h3></div>
         <span className="text-sm text-muted-foreground">درس {lesson.order.toLocaleString("fa-IR")}</span>
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
@@ -301,8 +302,4 @@ function LessonCard({ lesson, busy, active, feedback, action, toggle }: {
 
 function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return <div className="surface-card flex items-center gap-3 rounded-2xl p-5"><span className="grid size-11 place-items-center rounded-xl bg-accent-soft text-xl text-brand-accent">{icon}</span><div><p className="text-xs text-muted-foreground">{label}</p><strong className="mt-1 block">{value}</strong></div></div>;
-}
-
-function Status({ text, retry }: { text: string; retry?: () => void }) {
-  return <div className="surface-card rounded-2xl p-10 text-center text-muted-foreground"><p>{text}</p>{retry && <button type="button" onClick={retry} className="brand-button mt-4 rounded-xl px-5 py-2">تلاش دوباره</button>}</div>;
 }

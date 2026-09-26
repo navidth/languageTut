@@ -73,7 +73,7 @@ export default function TrustSection() {
 
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {skills.map(
-            ({ icon: Icon, english, persian, text, accent }, index) => (
+            ({ icon: Icon, english, persian, text, accent }) => (
               <article
                 key={english}
                 className="group rounded-[1.75rem] border border-white/10 bg-white/[0.055] p-6 backdrop-blur-sm transition hover:-translate-y-1 hover:border-brand-accent/45 hover:bg-white/[0.085]"

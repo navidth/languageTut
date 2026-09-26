@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
 import CourseBackLink from "@/components/courses/CourseBackLink";
@@ -7,49 +8,26 @@ import MediaGallery from "@/components/media/MediaGallery";
 import Pagination from "@/components/ui/Pagination";
 import { BACKEND_BASE_URL } from "@/lib/apiClient";
 import type { Course, Lesson, PaginatedLessons } from "@/lib/courses";
+import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
+import { formatPersianDate } from "@/lib/date";
 import { parsePageParam } from "@/lib/pagination";
+import { formatSkillName } from "@/lib/skillPresentation";
 
 type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ lessonPage?: string | string[] }>;
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
-const skillNames: Record<string, string> = {
-  listening: "شنیداری",
-  reading: "خواندن",
-  writing: "نوشتن",
-  speaking: "مکالمه",
-};
-
-const courseTypeLabels: Record<string, string> = {
-  general: "زبان عمومی",
-  ielts: "آیلتس",
-};
-
-function formatPrice(course: Course) {
-  return course.is_free || course.price === 0
-    ? "رایگان"
-    : `${course.price.toLocaleString("fa-IR")} تومان`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" });
-}
-
-async function getCourse(id: string): Promise<Course | null> {
+const getCourse = cache(async (id: string): Promise<Course | null> => {
   const response = await fetch(`${BACKEND_BASE_URL}/api/courses/${id}/`, {
     next: { revalidate: 300 },
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("دریافت اطلاعات دوره ناموفق بود.");
   return response.json();
-}
+});
 
 async function getCourseLessons(id: string, page: number): Promise<PaginatedLessons | null> {
   const response = await fetch(`${BACKEND_BASE_URL}/api/courses/${id}/lessons/?page=${page}`, {
@@ -88,7 +66,7 @@ export default async function CoursePage({ params, searchParams }: Props) {
   if (!course) notFound();
 
   const lessons = await getCourseLessons(id, lessonPage);
-  const courseType = courseTypeLabels[course.course_type] ?? course.course_type;
+  const courseType = formatCourseType(course.course_type);
   const available = course.is_active && !course.deleted_at;
   const jsonLd = {
     "@context": "https://schema.org",
@@ -146,7 +124,7 @@ export default async function CoursePage({ params, searchParams }: Props) {
 
           <div className="min-w-64 rounded-2xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
             <p className="text-xs text-white/55">هزینه دوره</p>
-            <strong className="mt-1 block text-2xl text-brand-accent">{formatPrice(course)}</strong>
+            <strong className="mt-1 block text-2xl text-brand-accent">{formatCoursePrice(course)}</strong>
             <CourseStartAction initialCourse={course} />
           </div>
         </div>
@@ -187,10 +165,10 @@ export default async function CoursePage({ params, searchParams }: Props) {
           <CourseInfo label="پیشنهادی" value={course.is_recommended ? "بله" : "خیر"} />
           <CourseInfo label="اولویت پیشنهاد" value={course.recommendation_order?.toLocaleString("fa-IR") ?? "—"} />
           <CourseInfo label="وضعیت انتشار" value={course.is_active ? "فعال" : "غیرفعال"} />
-          <CourseInfo label="تاریخ ایجاد" value={formatDate(course.created_at)} />
-          <CourseInfo label="آخرین به‌روزرسانی" value={formatDate(course.updated_at)} />
-          <CourseInfo label="وضعیت حذف" value={course.deleted_at ? `حذف‌شده در ${formatDate(course.deleted_at)}` : "حذف نشده"} />
-          <CourseInfo label="قیمت ثبت‌شده" value={formatPrice(course)} />
+          <CourseInfo label="تاریخ ایجاد" value={formatPersianDate(course.created_at, { year: "numeric", month: "long", day: "numeric" })} />
+          <CourseInfo label="آخرین به‌روزرسانی" value={formatPersianDate(course.updated_at, { year: "numeric", month: "long", day: "numeric" })} />
+          <CourseInfo label="وضعیت حذف" value={course.deleted_at ? `حذف‌شده در ${formatPersianDate(course.deleted_at, { year: "numeric", month: "long", day: "numeric" })}` : "حذف نشده"} />
+          <CourseInfo label="قیمت ثبت‌شده" value={formatCoursePrice(course)} />
         </dl>
       </section>
 
@@ -244,7 +222,7 @@ function CourseInfo({ label, value }: { label: string; value: string }) {
 }
 
 function LessonItem({ lesson }: { lesson: Lesson }) {
-  const skill = skillNames[lesson.skill_detail.name] ?? lesson.skill_detail.name;
+  const skill = formatSkillName(lesson.skill_detail.name);
 
   return (
     <li className="surface-card rounded-2xl p-5 sm:p-6">

@@ -7,7 +7,7 @@ import { parsePageParam } from "@/lib/pagination";
 
 type Props = { searchParams: Promise<{ page?: string | string[] }> };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "دوره‌های آنلاین زبان و آیلتس",

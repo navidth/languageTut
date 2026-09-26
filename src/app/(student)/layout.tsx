@@ -1,6 +1,6 @@
 "use client";
+
 import "@/styles/globals.css";
-import useWindows from "@/hooks/useWindows";
 import AppSidebar from "@/components/dashboard/navbar/AppSidebar";
 import { itemsStudent } from "@/lib/constants";
 import NavbarMobile from "@/components/dashboard/navbar/NavbarMobile";
@@ -10,27 +10,19 @@ export default function RootLayout({ children }: Readonly<{
       children: React.ReactNode;
 }>) {
       return (
-            <>
-                  <ClientLayout>
-                        {children}
-                  </ClientLayout>
-            </>
-      );
-}
-
-function ClientLayout({ children }: { children: React.ReactNode }) {
-      const size = useWindows()
-      return (
             <main className="min-h-screen bg-background sm:flex">
-                  {size && size.width > 640 ? (
+                  <div className="hidden sm:block">
                         <AppSidebar items={itemsStudent} />
-                  ) : size && <NavbarMobile items={itemsStudent} />}
+                  </div>
+                  <div className="sm:hidden">
+                        <NavbarMobile items={itemsStudent} />
+                  </div>
                   <div className="min-w-0 flex-1 transition-all duration-300 ease-in-out sm:ms-52">
                         <AppHeader />
-                        <div className="mx-auto p-4 pb-24 md:p-6 sm:pb-6">
+                        <div className="mx-auto p-4 pb-24 sm:pb-6 md:p-6">
                               {children}
                         </div>
                   </div>
             </main>
-      )
+      );
 }

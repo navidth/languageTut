@@ -25,7 +25,7 @@ import {
 } from "@/store/skillsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import Pagination from "@/components/ui/Pagination";
-import { skillDescriptions, skillLabels } from "./skillPresentation";
+import { skillDescriptions, skillLabels } from "@/lib/skillPresentation";
 
 const skillIcons: Record<SkillName, IconType> = {
   listening: FaHeadphones,

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/apiErrors";
+import { isCacheFresh } from "@/lib/cache";
 import {
   type PaginatedSkills,
   type PatchedSkillRequest,
@@ -25,6 +26,8 @@ type SkillsState = {
   detailError: string | null;
   mutationError: string | null;
   successMessage: string | null;
+  listLastFetched: number | null;
+  detailLastFetched: number | null;
 };
 
 const initialState: SkillsState = {
@@ -42,6 +45,8 @@ const initialState: SkillsState = {
   detailError: null,
   mutationError: null,
   successMessage: null,
+  listLastFetched: null,
+  detailLastFetched: null,
 };
 
 type ThunkConfig = {
@@ -63,8 +68,11 @@ export const fetchSkills = createAsyncThunk<
     }
   },
   {
-    condition: (_, { getState }) =>
-      getState().skills.listStatus !== "loading",
+    condition: (page = 1, { getState }) => {
+      const state = getState().skills;
+      if (state.listStatus === "loading") return false;
+      return state.page !== page || !isCacheFresh(state.listLastFetched);
+    },
   },
 );
 
@@ -83,6 +91,9 @@ export const fetchSkill = createAsyncThunk<Skill, number, ThunkConfig>(
       return !(
         state.detailStatus === "loading" &&
         state.detailRequestedId === id
+      ) && !(
+        state.selected?.id === id &&
+        isCacheFresh(state.detailLastFetched)
       );
     },
   },
@@ -155,6 +166,7 @@ const skillsSlice = createSlice({
       state.detailRequestedId = null;
       state.detailError = null;
       state.detailStatus = "idle";
+      state.detailLastFetched = null;
     },
   },
   extraReducers(builder) {
@@ -185,6 +197,7 @@ const skillsSlice = createSlice({
         state.count = action.payload.count;
         state.next = action.payload.next;
         state.previous = action.payload.previous;
+        state.listLastFetched = Date.now();
       })
       .addCase(fetchSkills.rejected, (state, action) => {
         state.listStatus = "failed";
@@ -202,6 +215,7 @@ const skillsSlice = createSlice({
         if (state.detailRequestedId !== action.meta.arg) return;
         state.detailStatus = "succeeded";
         state.selected = action.payload;
+        state.detailLastFetched = Date.now();
       })
       .addCase(fetchSkill.rejected, (state, action) => {
         if (state.detailRequestedId !== action.meta.arg) return;
@@ -216,6 +230,7 @@ const skillsSlice = createSlice({
         state.items.push(action.payload);
         state.items.sort((a, b) => a.order - b.order);
         state.count += 1;
+        state.listLastFetched = Date.now();
         state.successMessage = getApiSuccessMessage(201, "مهارت با موفقیت ایجاد شد.");
       })
       .addCase(createSkill.rejected, mutationRejected)
@@ -223,6 +238,7 @@ const skillsSlice = createSlice({
       .addCase(replaceSkill.fulfilled, (state, action) => {
         state.mutationStatus = "succeeded";
         updateStoredSkill(state, action.payload);
+        state.listLastFetched = Date.now();
         state.successMessage = getApiSuccessMessage(200, "مهارت با موفقیت ویرایش شد.");
       })
       .addCase(replaceSkill.rejected, mutationRejected)
@@ -230,6 +246,7 @@ const skillsSlice = createSlice({
       .addCase(updateSkill.fulfilled, (state, action) => {
         state.mutationStatus = "succeeded";
         updateStoredSkill(state, action.payload);
+        state.listLastFetched = Date.now();
         state.successMessage = getApiSuccessMessage(200, "مهارت با موفقیت ویرایش شد.");
       })
       .addCase(updateSkill.rejected, mutationRejected)
@@ -241,6 +258,7 @@ const skillsSlice = createSlice({
         );
         if (state.selected?.id === action.payload) state.selected = null;
         state.count = Math.max(0, state.count - 1);
+        state.listLastFetched = Date.now();
         state.successMessage = getApiSuccessMessage(204, "مهارت با موفقیت حذف شد.");
       })
       .addCase(deleteSkill.rejected, mutationRejected);

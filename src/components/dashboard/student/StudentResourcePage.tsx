@@ -3,9 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { getApiErrorMessage } from "@/lib/apiErrors";
-import { studentApi, type Lesson, type Paginated, type PracticeTest, type Question } from "@/lib/studentApi";
+import { studentApi, type Lesson, type PracticeTest, type Question } from "@/lib/studentApi";
 import type { Course, Level } from "@/lib/courses";
+import { formatCourseType } from "@/lib/coursePresentation";
+import { formatSkillName } from "@/lib/skillPresentation";
+import AsyncState from "@/components/ui/AsyncState";
 import Pagination from "@/components/ui/Pagination";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchEnrolledCourses,
+  fetchStudentResource,
+  invalidateStudentProgress,
+  type StudentResourceKind,
+} from "@/store/studentSlice";
 
 export type ResourceKind = "levels" | "courses" | "lessons" | "questions" | "tests";
 type Item = Level | Course | Lesson | Question | PracticeTest;
@@ -17,10 +27,6 @@ const titles: Record<ResourceKind, [string, string]> = {
   questions: ["سؤال‌ها", "بانک سؤال‌های تمرینی"],
   tests: ["تمرین‌های تستی", "آزمون‌های زمان‌دار متناسب با سطح و مهارت"],
 };
-const skillNames: Record<string, string> = {
-  listening: "شنیداری", reading: "خواندن", writing: "نوشتن", speaking: "مکالمه",
-};
-
 export default function StudentResourcePage({
   kind,
   heading,
@@ -32,45 +38,37 @@ export default function StudentResourcePage({
   description?: string;
   eyebrow?: string;
 }) {
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const dispatch = useAppDispatch();
   const [busy, setBusy] = useState<number | null>(null);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ count: 0, next: null as string | null, previous: null as string | null });
+  const [mutationError, setMutationError] = useState("");
+  const entry = useAppSelector((state) => kind === "courses"
+    ? state.student.enrolledCoursePages[page]
+    : state.student.resources[kind][page]);
+  const items = (entry?.data?.results ?? []) as Item[];
+  const loading = !entry || entry.status === "loading";
 
-  const load = useCallback(async (requestedPage: number) => {
-    setLoading(true); setError("");
-    try {
-      let result: Paginated<Item>;
-
-      if (kind === "courses") {
-        const enrollments = await studentApi.enrollments(requestedPage);
-        const courses = await Promise.all(
-          enrollments.results.map((enrollment) => studentApi.course(enrollment.course)),
-        );
-        result = { ...enrollments, results: courses };
-      } else {
-        const loaders = {
-          levels: studentApi.levels, lessons: studentApi.lessons,
-          questions: studentApi.questions, tests: studentApi.tests,
-        };
-        result = await loaders[kind](requestedPage) as Paginated<Item>;
-      }
-
-      setItems(result.results);
-      setPagination({ count: result.count, next: result.next, previous: result.previous });
-    } catch (e) { setError(getApiErrorMessage(e, "دریافت اطلاعات از سرور ناموفق بود.")); } finally { setLoading(false); }
-  }, [kind]);
+  const load = useCallback((requestedPage: number, force = false) => {
+    if (kind === "courses") {
+      return dispatch(fetchEnrolledCourses({ page: requestedPage, force }));
+    }
+    return dispatch(fetchStudentResource({
+      kind: kind as StudentResourceKind,
+      page: requestedPage,
+      force,
+    }));
+  }, [dispatch, kind]);
 
   useEffect(() => { void load(page); }, [load, page]);
 
   async function lessonAction(id: number, complete: boolean) {
     setBusy(id);
+    setMutationError("");
     try {
       await (complete ? studentApi.completeLesson(id) : studentApi.startLesson(id));
-      await load(page);
-    } catch (e) { setError(getApiErrorMessage(e, "انجام عملیات درس ناموفق بود.")); } finally { setBusy(null); }
+      dispatch(invalidateStudentProgress());
+      await load(page, true);
+    } catch (e) { setMutationError(getApiErrorMessage(e, "انجام عملیات درس ناموفق بود.")); } finally { setBusy(null); }
   }
 
   return (
@@ -80,10 +78,11 @@ export default function StudentResourcePage({
         <h1 className="text-3xl font-black">{heading ?? titles[kind][0]}</h1>
         <p className="page-hero-muted mt-2">{description ?? titles[kind][1]}</p>
       </div>
-      {loading && <Status text="در حال دریافت اطلاعات..." />}
-      {error && <Status text={error} retry={() => void load(page)} />}
-      {!loading && !error && items.length === 0 && <Status text="در حال حاضر موردی برای نمایش وجود ندارد." />}
-      {!loading && !error && (
+      {mutationError && <p className="feedback-error mb-4 rounded-xl p-3 text-sm" role="alert">{mutationError}</p>}
+      {loading && <AsyncState message="در حال دریافت اطلاعات..." />}
+      {entry?.status === "failed" && <AsyncState message={entry.error ?? "دریافت اطلاعات ناموفق بود."} retry={() => void load(page, true)} />}
+      {!loading && entry?.status !== "failed" && items.length === 0 && <AsyncState message="در حال حاضر موردی برای نمایش وجود ندارد." />}
+      {!loading && entry?.status !== "failed" && entry?.data && items.length > 0 && (
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => (
@@ -98,10 +97,10 @@ export default function StudentResourcePage({
           </div>
           <Pagination
             currentPage={page}
-            count={pagination.count}
+            count={entry.data.count}
             resultsCount={items.length}
-            next={pagination.next}
-            previous={pagination.previous}
+            next={entry.data.next}
+            previous={entry.data.previous}
             onPageChange={setPage}
             loading={loading}
             ariaLabel={`صفحه‌بندی ${heading ?? titles[kind][0]}`}
@@ -111,18 +110,12 @@ export default function StudentResourcePage({
     </section>
   );
 }
-
-function Status({ text, retry }: { text: string; retry?: () => void }) {
-  return <div className="surface-card rounded-2xl p-10 text-center text-muted-foreground">
-    <p>{text}</p>{retry && <button onClick={retry} className="brand-button mt-4 rounded-xl px-5 py-2">تلاش دوباره</button>}
-  </div>;
-}
 function LevelCard({ item }: { item: Level }) {
   return <><span lang="en" dir="ltr" className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-xl font-black text-brand-secondary dark:text-brand-accent">{item.code}</span>
     <h2 className="mt-4 text-xl font-bold">{item.title}</h2><p className="mt-2 text-sm text-muted-foreground">مرحله {item.order.toLocaleString("fa-IR")} مسیر آموزش</p></>;
 }
 function CourseCard({ item }: { item: Course }) {
-  const type = item.course_type === "ielts" ? "آیلتس" : item.course_type === "general" ? "زبان عمومی" : item.course_type;
+  const type = formatCourseType(item.course_type);
   return <>
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="brand-badge rounded-full px-3 py-1 text-sm">سطح {item.level_detail?.code}</span>
@@ -140,7 +133,7 @@ function CourseCard({ item }: { item: Course }) {
   </>;
 }
 function LessonCard({ item, busy, action }: { item: Lesson; busy: boolean; action: (id: number, complete: boolean) => void }) {
-  return <><div className="flex justify-between"><span className="rounded-full bg-secondary-soft px-3 py-1 text-sm font-bold text-brand-secondary dark:text-white">{skillNames[item.skill_detail?.name] ?? "درس"}</span><span className="text-sm text-muted-foreground">درس {item.order}</span></div>
+  return <><div className="flex justify-between"><span className="rounded-full bg-secondary-soft px-3 py-1 text-sm font-bold text-brand-secondary dark:text-white">{formatSkillName(item.skill_detail?.name)}</span><span className="text-sm text-muted-foreground">درس {item.order}</span></div>
     <h2 className="mt-4 text-lg font-bold">{item.title}</h2><div className="mt-3 line-clamp-3 text-sm leading-7 text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.content }} />
     <div className="mt-5 flex gap-2"><button disabled={busy} onClick={() => action(item.id, false)} className="brand-button rounded-xl px-4 py-2 text-sm">شروع درس</button><button disabled={busy} onClick={() => action(item.id, true)} className="ghost-button rounded-xl px-4 py-2 text-sm">تکمیل شد</button></div></>;
 }

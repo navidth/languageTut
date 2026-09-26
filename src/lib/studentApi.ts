@@ -1,5 +1,4 @@
 import apiClient from "./apiClient";
-import type { User, UpdateProfileRequest } from "./auth";
 import type { Course, Level } from "./courses";
 import type { MediaAsset } from "./media";
 import type { Skill } from "./skills";
@@ -121,11 +120,7 @@ const list = async <T>(path: string, page = 1) =>
   (await apiClient.get<Paginated<T>>(path, { params: { page } })).data;
 
 export const studentApi = {
-  profile: async () => (await apiClient.get<User>("/api/auth/me/")).data,
-  updateProfile: async (data: Partial<UpdateProfileRequest>) =>
-    (await apiClient.patch<User>("/api/auth/me/", data)).data,
   levels: (page = 1) => list<Level>("/api/levels/", page),
-  courses: (page = 1) => list<Course>("/api/courses/", page),
   course: async (id: number) =>
     (await apiClient.get<Course>(`/api/courses/${id}/`)).data,
   purchaseCourse: async (id: number) =>
