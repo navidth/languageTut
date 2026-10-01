@@ -3,6 +3,7 @@ import { BsPersonCircle } from "react-icons/bs";
 import { FaLayerGroup, FaQuestionCircle, FaReadme } from "react-icons/fa";
 import { HiOutlineInformationCircle, HiSparkles } from "react-icons/hi";
 import {
+  MdAssignment,
   MdCastForEducation,
   MdHomeWork,
   MdOutlineAssignmentTurnedIn,
@@ -45,6 +46,7 @@ export const itemsStudent: MenuItems = [
     icon: MdCastForEducation,
   },
   { id: 7, link: "/student/lessons", label: "درس‌ها", icon: MdHomeWork },
+  { id: 11, link: "/student/homework", label: "تکالیف", icon: MdAssignment },
   {
     id: 8,
     link: "/student/questions",

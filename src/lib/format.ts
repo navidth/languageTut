@@ -9,3 +9,20 @@ export function formatRemainingTime(totalSeconds: number) {
     });
   return `${formatPart(minutes)}:${formatPart(seconds)}`;
 }
+
+/** Parses the decimal strings the API uses for scores and percentages. */
+export function parseDecimal(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function formatDecimal(
+  value: string | number | null | undefined,
+  fallback = "—",
+) {
+  const parsed = parseDecimal(value);
+  return parsed === null
+    ? fallback
+    : parsed.toLocaleString("fa-IR", { maximumFractionDigits: 2 });
+}

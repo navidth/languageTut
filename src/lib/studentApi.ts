@@ -39,12 +39,24 @@ export type Question = {
   order?: number;
 };
 export type PracticeTestMedia = MediaAsset;
+export const EXAM_TYPES = ["practice", "placement"] as const;
+export type ExamType = (typeof EXAM_TYPES)[number];
+export type ExamSection = {
+  id: number;
+  practice_test: number;
+  title?: string;
+  instructions?: string;
+  order?: number;
+  media?: PracticeTestMedia[];
+  questions?: Question[];
+};
 export type PracticeTest = {
   id: number;
   course: number;
   level: string;
   skill: number;
   skill_detail: Skill;
+  exam_type?: ExamType;
   title: string;
   description: string;
   duration_minutes: number;
@@ -52,6 +64,7 @@ export type PracticeTest = {
   questions_count: number;
   media?: PracticeTestMedia[];
   questions?: Question[];
+  sections?: ExamSection[];
 };
 export type PracticeTestAnswerRequest = {
   question: number;
@@ -71,15 +84,32 @@ export type PracticeTestAttempt = {
   total_score?: string;
   max_score?: string;
   percentage?: string;
-  recommended_level?: string | null;
-  answers?: Array<{
-    id: number;
-    question: number;
-    answer_text: string;
-    is_correct: boolean | null;
-    score: string;
-    feedback: string | null;
-  }>;
+  recommended_level?: Level | string | null;
+  answers?: StudentAnswer[];
+};
+export type StudentAnswer = {
+  id: number;
+  question: number;
+  answer_text: string;
+  /** `null` until a teacher grades a manually-marked answer. */
+  is_correct: boolean | null;
+  score: string;
+  feedback: string | null;
+};
+/** One attempt at a practice test, as listed by `/api/me/submissions/`. */
+export type ExamSubmission = {
+  id: number;
+  practice_test: number;
+  practice_test_title: string;
+  exam_type: ExamType | (string & {});
+  started_at: string;
+  /** `null` while the attempt is still in progress. */
+  submitted_at: string | null;
+  total_score: string;
+  max_score: string;
+  percentage: string;
+  recommended_level: Level | string | null;
+  answers: StudentAnswer[];
 };
 export type Enrollment = {
   id: number;
@@ -134,6 +164,13 @@ export const studentApi = {
     (await apiClient.post<PracticeTestAttempt>(`/api/practice-tests/${id}/start/`, {})).data,
   submitTest: async (id: number, data: PracticeTestSubmitRequest) =>
     (await apiClient.post<PracticeTestAttempt>(`/api/practice-tests/${id}/submit/`, data)).data,
+  mySubmissions: async () => {
+    const { data } = await apiClient.get<
+      ExamSubmission[] | Paginated<ExamSubmission>
+    >("/api/me/submissions/");
+    // Documented as a plain array; a paginated envelope is tolerated too.
+    return Array.isArray(data) ? data : data.results;
+  },
   enrollments: (page = 1) => list<Enrollment>("/api/me/enrollments/", page),
   progress: async () =>
     (await apiClient.get<MyProgress>("/api/me/progress/")).data,

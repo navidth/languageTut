@@ -6,14 +6,18 @@ import { getApiErrorMessage } from "@/lib/apiErrors";
 import { studentApi, type Lesson, type PracticeTest, type Question } from "@/lib/studentApi";
 import type { Course, Level } from "@/lib/courses";
 import { formatCourseType } from "@/lib/coursePresentation";
+import { studentExamResultPath } from "@/lib/routes";
 import { formatSkillName } from "@/lib/skillPresentation";
+import { hasActiveSession, useSessionState } from "@/components/auth/useSessionState";
 import AsyncState from "@/components/ui/AsyncState";
 import Pagination from "@/components/ui/Pagination";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchEnrolledCourses,
+  fetchExamSubmissions,
   fetchStudentResource,
   invalidateStudentProgress,
+  selectLatestExamSubmissions,
   type StudentResourceKind,
 } from "@/store/studentSlice";
 
@@ -61,6 +65,15 @@ export default function StudentResourcePage({
 
   useEffect(() => { void load(page); }, [load, page]);
 
+  // One cached request tells which exams already have a result to show.
+  const session = useSessionState();
+  const latestResults = useAppSelector(selectLatestExamSubmissions);
+  useEffect(() => {
+    if (kind === "tests" && hasActiveSession(session)) {
+      void dispatch(fetchExamSubmissions());
+    }
+  }, [dispatch, kind, session]);
+
   async function lessonAction(id: number, complete: boolean) {
     setBusy(id);
     setMutationError("");
@@ -91,7 +104,7 @@ export default function StudentResourcePage({
                 {kind === "courses" && <CourseCard item={item as Course} />}
                 {kind === "lessons" && <LessonCard item={item as Lesson} busy={busy === item.id} action={lessonAction} />}
                 {kind === "questions" && <QuestionCard item={item as Question} />}
-                {kind === "tests" && <TestCard item={item as PracticeTest} />}
+                {kind === "tests" && <TestCard item={item as PracticeTest} hasResult={item.id in latestResults} />}
               </article>
             ))}
           </div>
@@ -142,8 +155,13 @@ function QuestionCard({ item }: { item: Question }) {
   return <><span className="text-xs text-muted-foreground">نوع: {item.question_type}</span><h2 className="mt-3 font-bold leading-7">{item.question_text}</h2>
     {options.length > 0 && <ul className="mt-4 space-y-2">{options.map((x, i) => <li key={i} className="rounded-lg bg-secondary-soft p-2 text-sm">{String(x)}</li>)}</ul>}</>;
 }
-function TestCard({ item }: { item: PracticeTest }) {
+function TestCard({ item, hasResult }: { item: PracticeTest; hasResult: boolean }) {
   return <><div className="flex justify-between"><span className="brand-badge rounded-full px-3 py-1 text-sm">سطح {item.level}</span><span className="text-sm text-muted-foreground">{item.duration_minutes} دقیقه</span></div>
     <h2 className="mt-4 text-xl font-bold">{item.title}</h2><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description || "آزمون تمرینی"}</p>
-    <div className="mt-4 flex items-center justify-between"><span className="text-sm">{item.questions_count} سؤال</span><Link href={`/student/tests/${item.id}`} className="brand-button rounded-xl px-4 py-2 text-sm">ورود به آزمون</Link></div></>;
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2"><span className="text-sm">{item.questions_count} سؤال</span>
+      <div className="flex flex-wrap justify-end gap-2">
+        {hasResult && <Link href={studentExamResultPath(item.id)} className="ghost-button rounded-xl px-4 py-2 text-sm">مشاهده نتیجه</Link>}
+        <Link href={`/student/tests/${item.id}`} className="brand-button rounded-xl px-4 py-2 text-sm">ورود به آزمون</Link>
+      </div>
+    </div></>;
 }

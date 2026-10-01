@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithStore } from "@/test/renderWithStore";
 import TestDetailPage from "./TestDetailPage";
 
 const mocks = vi.hoisted(() => ({
@@ -79,7 +80,7 @@ describe("TestDetailPage", () => {
   });
 
   it("starts the test when the detail route opens", async () => {
-    render(<TestDetailPage id={51} />);
+    renderWithStore(<TestDetailPage id={51} />);
 
     await screen.findByRole("heading", { name: "PT Listening Practice 1" });
     await waitFor(() => expect(mocks.startTest).toHaveBeenCalledWith(51));
@@ -107,7 +108,7 @@ describe("TestDetailPage", () => {
       }],
     });
 
-    render(<TestDetailPage id={57} />);
+    renderWithStore(<TestDetailPage id={57} />);
 
     expect(await screen.findByText("مدل: درست / نادرست")).toBeInTheDocument();
     expect(screen.queryByText("true_false")).not.toBeInTheDocument();
@@ -138,7 +139,7 @@ describe("TestDetailPage", () => {
       questions_count: 1,
     });
 
-    const { container } = render(<TestDetailPage id={51} />);
+    const { container } = renderWithStore(<TestDetailPage id={51} />);
 
     expect(await screen.findByLabelText("ویدئوی راهنما")).toBeInTheDocument();
     expect(screen.getByLabelText("صدای سؤال")).toBeInTheDocument();
@@ -150,7 +151,7 @@ describe("TestDetailPage", () => {
 
   it("submits all answers only after the test is complete", async () => {
     const user = userEvent.setup();
-    render(<TestDetailPage id={51} />);
+    renderWithStore(<TestDetailPage id={51} />);
 
     const submitButton = await screen.findByRole("button", { name: "ثبت نهایی آزمون" });
     await waitFor(() => expect(screen.getByLabelText("Option A")).toBeEnabled());
@@ -181,5 +182,8 @@ describe("TestDetailPage", () => {
     });
     expect(screen.getByText(/پاسخ اشتباه/)).toBeInTheDocument();
     expect(screen.getByText(/پاسخ صحیح/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "مشاهده نتیجه کامل" }),
+    ).toHaveAttribute("href", "/student/tests/51/result");
   });
 });

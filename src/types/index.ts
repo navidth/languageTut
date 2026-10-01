@@ -18,3 +18,6 @@ export type MenuItem = {
       }>
 }
 export type MenuItems = MenuItem[];
+
+/** Semantic colour intent shared by status badges and notices. */
+export type StatusTone = "neutral" | "info" | "warning" | "danger" | "success";

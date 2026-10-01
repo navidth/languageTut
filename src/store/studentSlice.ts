@@ -1,10 +1,21 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { getApiErrorMessage } from "@/lib/apiErrors";
+import {
+  createAsyncThunk,
+  createSelector,
+  createSlice,
+} from "@reduxjs/toolkit";
+import {
+  getApiErrorMessage,
+  toApiErrorInfo,
+  type ApiErrorInfo,
+  type ApiErrorKind,
+} from "@/lib/apiErrors";
 import { isCacheFresh } from "@/lib/cache";
 import type { Course, Level } from "@/lib/courses";
+import { latestCompletedSubmissionsByTest } from "@/lib/examPresentation";
 import {
   studentApi,
   type Enrollment,
+  type ExamSubmission,
   type Lesson,
   type MyProgress,
   type Paginated,
@@ -32,11 +43,29 @@ type OverviewState = {
   lastFetched: number | null;
 };
 
+export type ExamSubmissionsState = {
+  items: ExamSubmission[];
+  status: RequestStatus;
+  error: string | null;
+  errorKind: ApiErrorKind | null;
+  lastFetched: number | null;
+};
+
+export type PracticeTestDetailEntry = {
+  data: PracticeTest | null;
+  status: RequestStatus;
+  error: string | null;
+  errorKind: ApiErrorKind | null;
+  lastFetched: number | null;
+};
+
 export type StudentState = {
   overview: OverviewState;
   enrollmentPages: Record<number, PageEntry<Enrollment>>;
   enrolledCoursePages: Record<number, PageEntry<Course>>;
   resources: Record<StudentResourceKind, Record<number, PageEntry<StudentResource>>>;
+  examSubmissions: ExamSubmissionsState;
+  testDetails: Record<number, PracticeTestDetailEntry>;
 };
 
 const emptyProgress: MyProgress = { courses: [], lessons: [] };
@@ -52,6 +81,14 @@ const initialState: StudentState = {
   enrollmentPages: {},
   enrolledCoursePages: {},
   resources: { levels: {}, lessons: {}, questions: {}, tests: {} },
+  examSubmissions: {
+    items: [],
+    status: "idle",
+    error: null,
+    errorKind: null,
+    lastFetched: null,
+  },
+  testDetails: {},
 };
 
 type StudentThunkConfig = {
@@ -179,6 +216,58 @@ export const fetchEnrolledCourses = createAsyncThunk<
   },
 );
 
+type StudentDetailThunkConfig = {
+  state: { student: StudentState };
+  rejectValue: ApiErrorInfo;
+};
+
+const EXAM_SUBMISSIONS_ERROR = "دریافت نتایج آزمون‌ها ناموفق بود.";
+const TEST_DETAIL_ERROR = "دریافت اطلاعات آزمون ناموفق بود.";
+
+export const fetchExamSubmissions = createAsyncThunk<
+  ExamSubmission[],
+  { force?: boolean } | undefined,
+  StudentDetailThunkConfig
+>(
+  "student/examSubmissions",
+  async (_, api) => {
+    try {
+      return await studentApi.mySubmissions();
+    } catch (error) {
+      return api.rejectWithValue(toApiErrorInfo(error, EXAM_SUBMISSIONS_ERROR));
+    }
+  },
+  {
+    condition: (request, { getState }) => {
+      const entry = getState().student.examSubmissions;
+      if (entry.status === "loading") return false;
+      return Boolean(request?.force) || !isCacheFresh(entry.lastFetched);
+    },
+  },
+);
+
+export const fetchPracticeTestDetail = createAsyncThunk<
+  PracticeTest,
+  { id: number; force?: boolean },
+  StudentDetailThunkConfig
+>(
+  "student/practiceTestDetail",
+  async ({ id }, api) => {
+    try {
+      return await studentApi.test(id);
+    } catch (error) {
+      return api.rejectWithValue(toApiErrorInfo(error, TEST_DETAIL_ERROR));
+    }
+  },
+  {
+    condition: ({ id, force }, { getState }) => {
+      const entry = getState().student.testDetails[id];
+      if (entry?.status === "loading") return false;
+      return Boolean(force) || !isCacheFresh(entry?.lastFetched);
+    },
+  },
+);
+
 function pendingPage<T>(entry: PageEntry<T> | undefined): PageEntry<T> {
   return {
     data: entry?.data ?? null,
@@ -194,6 +283,10 @@ const studentSlice = createSlice({
   reducers: {
     invalidateStudentProgress(state) {
       state.overview.lastFetched = null;
+    },
+    /** Marks the cached exam history stale, e.g. after a test is submitted. */
+    invalidateExamSubmissions(state) {
+      state.examSubmissions.lastFetched = null;
     },
   },
   extraReducers(builder) {
@@ -275,6 +368,57 @@ const studentSlice = createSlice({
           lastFetched: entry?.lastFetched ?? null,
         };
       })
+      .addCase(fetchExamSubmissions.pending, (state) => {
+        state.examSubmissions.status = "loading";
+        state.examSubmissions.error = null;
+        state.examSubmissions.errorKind = null;
+      })
+      .addCase(fetchExamSubmissions.fulfilled, (state, action) => {
+        state.examSubmissions = {
+          items: action.payload,
+          status: "succeeded",
+          error: null,
+          errorKind: null,
+          lastFetched: Date.now(),
+        };
+      })
+      .addCase(fetchExamSubmissions.rejected, (state, action) => {
+        state.examSubmissions.status = "failed";
+        state.examSubmissions.error =
+          action.payload?.message ?? EXAM_SUBMISSIONS_ERROR;
+        state.examSubmissions.errorKind = action.payload?.kind ?? "unknown";
+      })
+      .addCase(fetchPracticeTestDetail.pending, (state, action) => {
+        const { id } = action.meta.arg;
+        const entry = state.testDetails[id];
+        state.testDetails[id] = {
+          data: entry?.data ?? null,
+          status: "loading",
+          error: null,
+          errorKind: null,
+          lastFetched: entry?.lastFetched ?? null,
+        };
+      })
+      .addCase(fetchPracticeTestDetail.fulfilled, (state, action) => {
+        state.testDetails[action.meta.arg.id] = {
+          data: action.payload,
+          status: "succeeded",
+          error: null,
+          errorKind: null,
+          lastFetched: Date.now(),
+        };
+      })
+      .addCase(fetchPracticeTestDetail.rejected, (state, action) => {
+        const { id } = action.meta.arg;
+        const entry = state.testDetails[id];
+        state.testDetails[id] = {
+          data: entry?.data ?? null,
+          status: "failed",
+          error: action.payload?.message ?? TEST_DETAIL_ERROR,
+          errorKind: action.payload?.kind ?? "unknown",
+          lastFetched: entry?.lastFetched ?? null,
+        };
+      })
       .addCase(logout, () => initialState)
       .addCase(loadMe.rejected, () => initialState)
       .addCase(login.fulfilled, () => initialState)
@@ -282,5 +426,12 @@ const studentSlice = createSlice({
   },
 });
 
-export const { invalidateStudentProgress } = studentSlice.actions;
+export const { invalidateExamSubmissions, invalidateStudentProgress } =
+  studentSlice.actions;
+
+/** Latest finished attempt per practice test, keyed by the test id. */
+export const selectLatestExamSubmissions = createSelector(
+  [(state: { student: StudentState }) => state.student.examSubmissions.items],
+  latestCompletedSubmissionsByTest,
+);
 export default studentSlice.reducer;

@@ -36,6 +36,13 @@ export function clearAuthStorage() {
   document.cookie = "refresh_token=; path=/; Max-Age=0; SameSite=Lax";
 }
 
+export function hasStoredSession() {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    localStorage.getItem("accessToken") || localStorage.getItem("refreshToken"),
+  );
+}
+
 async function getFreshAccessToken() {
   const refreshToken = localStorage.getItem("refreshToken");
 

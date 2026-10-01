@@ -10,6 +10,7 @@ import AsyncState from "@/components/ui/AsyncState";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 import { coursesApi, type Course, type Lesson, type PaginatedLessons } from "@/lib/courses";
 import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
+import { studentHomeworkPath } from "@/lib/routes";
 import { formatSkillName } from "@/lib/skillPresentation";
 import { studentApi, type CourseProgress } from "@/lib/studentApi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -230,7 +231,10 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
       <section className="mt-10 scroll-mt-24" aria-labelledby="course-lessons-title">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div><h2 id="course-lessons-title" className="text-2xl font-black">درس‌های دوره</h2><p className="mt-2 text-sm text-muted-foreground">شروع دوره از یکی از درس‌های زیر انجام می‌شود.</p></div>
-          <span className="rounded-full bg-secondary-soft px-3 py-1 text-sm text-muted-foreground">{course.lessons_count.toLocaleString("fa-IR")} درس</span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {course.has_access && <Link href={studentHomeworkPath({ course: course.id })} className="ghost-button rounded-full px-4 py-1.5 text-sm">تکالیف این دوره</Link>}
+            <span className="rounded-full bg-secondary-soft px-3 py-1 text-sm text-muted-foreground">{course.lessons_count.toLocaleString("fa-IR")} درس</span>
+          </div>
         </div>
 
         {!course.has_access ? (

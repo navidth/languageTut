@@ -1,16 +1,7 @@
 import { memo } from "react";
-import type { PracticeTestAttempt, Question } from "@/lib/studentApi";
+import { formatQuestionType } from "@/lib/examPresentation";
+import type { Question, StudentAnswer } from "@/lib/studentApi";
 import PracticeTestMedia from "./PracticeTestMedia";
-
-type QuestionResult = NonNullable<PracticeTestAttempt["answers"]>[number];
-
-const questionTypeLabels: Record<string, string> = {
-  multiple_choice: "چندگزینه‌ای",
-  true_false: "درست / نادرست",
-  short_answer: "پاسخ کوتاه",
-  essay: "تشریحی",
-  speaking_prompt: "پاسخ گفتاری",
-};
 
 function questionScore(points: string | undefined) {
   if (!points) return "—";
@@ -25,7 +16,7 @@ type TestQuestionCardProps = {
   index: number;
   answer: string;
   disabled: boolean;
-  result?: QuestionResult;
+  result?: StudentAnswer;
   onAnswerChange: (questionId: number, value: string) => void;
 };
 
@@ -41,7 +32,7 @@ function TestQuestionCard({
   const choiceOptions = question.question_type === "true_false"
     ? [{ label: "صحیح", value: "true" }, { label: "غلط", value: "false" }]
     : options.map((option) => ({ label: String(option), value: String(option) }));
-  const model = questionTypeLabels[question.question_type] ?? "سایر";
+  const model = formatQuestionType(question.question_type);
   const questionNumber = (index + 1).toLocaleString("fa-IR");
   const questionMedia = [
     ...(question.media ?? []),

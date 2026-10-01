@@ -58,6 +58,8 @@ const fieldLabels: Record<string, string> = {
   current_level: "سطح زبان",
   refresh: "نشست کاربری",
   token: "نشست کاربری",
+  file: "فایل",
+  notes: "توضیحات",
 };
 
 const defaultStatusMessages: Record<number, string> = {
@@ -110,6 +112,18 @@ function localizeKnownMessage(message: string): string | null {
   }
   if (/already exists|already registered|already in use|unique/.test(normalized)) {
     return "این اطلاعات قبلاً ثبت شده است.";
+  }
+  if (/no file was submitted|was not a file/.test(normalized)) {
+    return "فایلی برای ارسال انتخاب نشده است.";
+  }
+  if (/submitted file is empty/.test(normalized)) {
+    return "فایل انتخاب‌شده خالی است.";
+  }
+  if (/file extension|extension .* not allowed/.test(normalized)) {
+    return "نوع این فایل مجاز نیست.";
+  }
+  if (/deadline|past due|late submission/.test(normalized)) {
+    return "مهلت ارسال این تکلیف به پایان رسیده است.";
   }
   if (/required|blank|null/.test(normalized)) {
     return "تکمیل این فیلد الزامی است.";
@@ -282,6 +296,18 @@ export function normalizeApiError(error: unknown, fallback?: string): ApiError {
     kind: "unknown",
     cause: error,
   });
+}
+
+/** Serializable summary of an API failure, safe to keep in the Redux store. */
+export type ApiErrorInfo = {
+  message: string;
+  kind: ApiErrorKind;
+  status?: number;
+};
+
+export function toApiErrorInfo(error: unknown, fallback?: string): ApiErrorInfo {
+  const { message, kind, status } = normalizeApiError(error, fallback);
+  return { message, kind, status };
 }
 
 export function getApiErrorMessage(error: unknown, fallback?: string): string {

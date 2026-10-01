@@ -57,11 +57,12 @@ export default function StudentDashboardUI() {
         />
       </div>
       <h2 className="mb-4 mt-8 text-xl font-black">دسترسی سریع</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[
           ["مهارت‌ها", "/student/skills"],
           ["سؤال‌ها", "/student/questions"],
           ["تمرین‌های تستی", "/student/tests"],
+          ["تکالیف", "/student/homework"],
           ["پروفایل من", "/student/profile"],
         ].map(([label, href]) => (
           <Link

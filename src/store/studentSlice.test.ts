@@ -2,8 +2,12 @@ import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import studentReducer, {
   fetchEnrolledCourses,
+  fetchExamSubmissions,
+  fetchPracticeTestDetail,
   fetchStudentOverview,
   fetchStudentResource,
+  invalidateExamSubmissions,
+  selectLatestExamSubmissions,
 } from "./studentSlice";
 
 const mocks = vi.hoisted(() => ({
@@ -11,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   enrollments: vi.fn(),
   course: vi.fn(),
   levels: vi.fn(),
+  mySubmissions: vi.fn(),
+  test: vi.fn(),
 }));
 
 vi.mock("@/lib/studentApi", () => ({
@@ -19,6 +25,8 @@ vi.mock("@/lib/studentApi", () => ({
     enrollments: mocks.enrollments,
     course: mocks.course,
     levels: mocks.levels,
+    mySubmissions: mocks.mySubmissions,
+    test: mocks.test,
   },
 }));
 
@@ -74,5 +82,37 @@ describe("student cache", () => {
     await store.dispatch(fetchStudentResource({ kind: "levels", page: 1, force: true })).unwrap();
 
     expect(mocks.levels).toHaveBeenCalledTimes(2);
+  });
+
+  it("reuses the exam history until a new attempt invalidates it", async () => {
+    mocks.mySubmissions.mockResolvedValue([
+      { id: 90, practice_test: 51, submitted_at: "2026-09-10T08:12:00Z", answers: [] },
+      { id: 91, practice_test: 60, submitted_at: null, answers: [] },
+    ]);
+    const store = createStore();
+
+    await store.dispatch(fetchExamSubmissions()).unwrap();
+    await store.dispatch(fetchExamSubmissions());
+    expect(mocks.mySubmissions).toHaveBeenCalledOnce();
+
+    store.dispatch(invalidateExamSubmissions());
+    await store.dispatch(fetchExamSubmissions()).unwrap();
+
+    expect(mocks.mySubmissions).toHaveBeenCalledTimes(2);
+    expect(selectLatestExamSubmissions(store.getState())).toEqual({
+      51: expect.objectContaining({ id: 90 }),
+    });
+  });
+
+  it("caches practice test details per test", async () => {
+    mocks.test.mockImplementation(async (id: number) => ({ id, title: "Test" }));
+    const store = createStore();
+
+    await store.dispatch(fetchPracticeTestDetail({ id: 51 })).unwrap();
+    await store.dispatch(fetchPracticeTestDetail({ id: 51 }));
+    await store.dispatch(fetchPracticeTestDetail({ id: 60 })).unwrap();
+
+    expect(mocks.test).toHaveBeenCalledTimes(2);
+    expect(store.getState().student.testDetails[60].data?.id).toBe(60);
   });
 });

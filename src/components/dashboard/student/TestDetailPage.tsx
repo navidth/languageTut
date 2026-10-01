@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { getApiErrorMessage } from "@/lib/apiErrors";
+import { formatRecommendedLevel } from "@/lib/examPresentation";
 import { formatRemainingTime } from "@/lib/format";
+import { studentExamResultPath } from "@/lib/routes";
 import {
   studentApi,
   type PracticeTest,
   type PracticeTestAttempt,
 } from "@/lib/studentApi";
+import { useAppDispatch } from "@/store/hooks";
+import { invalidateExamSubmissions } from "@/store/studentSlice";
 import PracticeTestMedia from "./PracticeTestMedia";
 import TestQuestionCard from "./TestQuestionCard";
 
@@ -20,6 +24,7 @@ type StartRequest = {
 };
 
 export default function TestDetailPage({ id }: { id: number }) {
+  const dispatch = useAppDispatch();
   const [test, setTest] = useState<PracticeTest | null>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [loadingError, setLoadingError] = useState("");
@@ -172,6 +177,8 @@ export default function TestDetailPage({ id }: { id: number }) {
           })),
         });
         setSubmission(result);
+        // The cached exam history does not include this attempt yet.
+        dispatch(invalidateExamSubmissions());
       } catch (error) {
         setSubmitError(
           getApiErrorMessage(
@@ -186,6 +193,7 @@ export default function TestDetailPage({ id }: { id: number }) {
     [
       allAnswered,
       answers,
+      dispatch,
       id,
       questions,
       started,
@@ -222,6 +230,9 @@ export default function TestDetailPage({ id }: { id: number }) {
 
   const inputsDisabled =
     !started || starting || timedOut || submitting || Boolean(submission);
+  const recommendedLevel = formatRecommendedLevel(
+    submission?.recommended_level,
+  );
 
   return (
     <section className="mx-auto max-w-4xl">
@@ -356,17 +367,23 @@ export default function TestDetailPage({ id }: { id: number }) {
             {submission.percentage != null && (
               <p>درصد: {submission.percentage}٪</p>
             )}
-            {submission.recommended_level && (
-              <p>سطح پیشنهادی: {submission.recommended_level}</p>
-            )}
+            {recommendedLevel && <p>سطح پیشنهادی: {recommendedLevel}</p>}
           </div>
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="ghost-button mt-4 rounded-xl px-5 py-2.5 text-sm font-bold"
-          >
-            بازگشت
-          </button>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href={studentExamResultPath(id)}
+              className="brand-button rounded-xl px-5 py-2.5 text-sm"
+            >
+              مشاهده نتیجه کامل
+            </Link>
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="ghost-button rounded-xl px-5 py-2.5 text-sm font-bold"
+            >
+              بازگشت
+            </button>
+          </div>
         </div>
       )}
     </section>
