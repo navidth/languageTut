@@ -10,19 +10,16 @@ export default function RootLayout({ children }: Readonly<{
       children: React.ReactNode;
 }>) {
       return (
-            <main className="min-h-screen bg-background sm:flex">
-                  <div className="hidden sm:block">
-                        <AppSidebar items={itemsStudent} />
-                  </div>
-                  <div className="sm:hidden">
-                        <NavbarMobile items={itemsStudent} />
-                  </div>
-                  <div className="min-w-0 flex-1 transition-all duration-300 ease-in-out sm:ms-52">
+            <div className="min-h-screen bg-background">
+                  {/* Sidebar from the tablet width up (an icon rail below lg), bottom bar on phones. */}
+                  <AppSidebar items={itemsStudent} />
+                  <NavbarMobile items={itemsStudent} />
+                  <div className="min-w-0 sm:ms-24 lg:ms-52">
                         <AppHeader />
-                        <div className="mx-auto p-4 pb-24 sm:pb-6 md:p-6">
+                        <main id="main-content" className="mx-auto p-4 pb-28 sm:pb-6 md:p-6">
                               {children}
-                        </div>
+                        </main>
                   </div>
-            </main>
+            </div>
       );
 }

@@ -22,11 +22,12 @@ export function LanguageLevelGauge({
 
   return (
     <div className="flex flex-col items-center justify-center">
+      {/* Shrinks with narrow cards instead of spilling out of them. */}
+      <div className="relative w-full max-w-55 pb-2">
       <svg
-        width="220"
-        height="120"
         viewBox="0 0 220 120"
-        className="block"
+        className="block h-auto w-full"
+        aria-hidden="true"
       >
         {/* Background arc */}
         <path
@@ -51,13 +52,14 @@ export function LanguageLevelGauge({
       </svg>
 
       {/* Center text */}
-      <div className="-mt-12 text-center">
+      <div className="absolute inset-x-0 bottom-0 text-center">
         <div className="text-3xl font-bold text-foreground">
           {level}
         </div>
         <div className="text-sm text-muted-foreground">
           سطح فعلی زبان
         </div>
+      </div>
       </div>
     </div>
   );

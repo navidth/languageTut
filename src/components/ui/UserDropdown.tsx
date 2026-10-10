@@ -1,13 +1,21 @@
 "use client";
 
-import { Dropdown, DropdownHeader, DropdownItem } from "flowbite-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BiLogOut } from "react-icons/bi";
 import { BsPersonCircle } from "react-icons/bs";
-import { loadMe, logout } from "@/store/authSlice";
+import { HiChevronDown } from "react-icons/hi";
+import { loadMe, signOut } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import HeaderMenu, {
+  headerMenuItemClassName,
+  headerMenuPanelClassName,
+  headerMenuTitleClassName,
+} from "./HeaderMenu";
+
+const triggerClassName =
+  "relative flex h-10 w-fit items-center justify-center rounded-xl border border-border !bg-popover px-5 text-center text-sm font-medium !text-popover-foreground shadow-[var(--shadow-brand-md)] hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-gray-100 dark:border-gray-600 dark:hover:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-700";
 
 function UserDropdown() {
   const dispatch = useAppDispatch();
@@ -22,7 +30,7 @@ function UserDropdown() {
   }, [dispatch, status]);
 
   const handleLogout = () => {
-    dispatch(logout());
+    void dispatch(signOut());
     router.push("/");
   };
 
@@ -30,41 +38,70 @@ function UserDropdown() {
   const displayName = user?.full_name ?? "کاربر مهمان";
 
   return (
-    <Dropdown
-      aria-label="منوی کاربر"
-      dismissOnClick
-      color="light"
-      className="rounded-xl border border-border !bg-popover !text-popover-foreground shadow-[var(--shadow-brand-md)]"
+    <HeaderMenu
+      id="dashboard-user-menu"
+      ariaLabel="منوی کاربر"
+      triggerClassName={triggerClassName}
+      // The menu opens from the header's left edge, so it may use the full width.
+      menuClassName={`${headerMenuPanelClassName} max-w-[calc(100vw-2rem)]`}
       label={
-        <span className="flex items-center gap-2 rounded-xl text-foreground">
-          <BsPersonCircle className="h-5 w-5 text-brand-secondary dark:text-brand-accent" />
-          <span>{displayName}</span>
-        </span>
+        <>
+          <span className="flex items-center gap-2 rounded-xl text-foreground">
+            <BsPersonCircle className="h-5 w-5 text-brand-secondary dark:text-brand-accent" aria-hidden="true" />
+            {/* Phones show only the avatar; the menu header names the user. */}
+            <span className="hidden max-w-40 truncate sm:inline">{displayName}</span>
+          </span>
+          <HiChevronDown className="ml-2 h-4 w-4" aria-hidden="true" />
+        </>
       }
     >
-      {user && (
-        <DropdownHeader className="border-b border-border bg-secondary-soft text-foreground">
-          <span className="block text-sm">{user.full_name}</span>
-          <span className="block truncate text-sm font-medium">{user.email}</span>
-        </DropdownHeader>
-      )}
-
-      {user && (
-        <DropdownItem as={Link} href={profilePath} icon={BsPersonCircle} className="flex items-center justify-start gap-2 hover:!bg-accent-soft hover:!text-brand-primary">
-          جزئیات پروفایل
-        </DropdownItem>
-      )}
-
-      {user ? (
-        <DropdownItem icon={BiLogOut} onClick={handleLogout} className="flex items-center justify-start gap-2 text-destructive hover:!bg-destructive-soft">
-          خروج
-        </DropdownItem>
-      ) : (
-        <DropdownItem as={Link} href="/" className="flex items-center justify-start gap-2 hover:!bg-accent-soft">
-          ورود
-        </DropdownItem>
-      )}
-    </Dropdown>
+      <div className="py-1">
+        {user && (
+          <div className={headerMenuTitleClassName}>
+            <span className="block text-sm">{user.full_name}</span>
+            <span className="block truncate text-sm font-medium">{user.email}</span>
+          </div>
+        )}
+        <ul role="none">
+          {user && (
+            <li role="none">
+              <Link
+                role="menuitem"
+                tabIndex={-1}
+                href={profilePath}
+                className={`${headerMenuItemClassName} flex items-center justify-start gap-2 text-gray-700 hover:!bg-accent-soft hover:!text-brand-primary`}
+              >
+                <BsPersonCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+                جزئیات پروفایل
+              </Link>
+            </li>
+          )}
+          <li role="none">
+            {user ? (
+              <button
+                role="menuitem"
+                tabIndex={-1}
+                type="button"
+                onClick={handleLogout}
+                className={`${headerMenuItemClassName} flex items-center justify-start gap-2 text-destructive hover:!bg-destructive-soft`}
+              >
+                <BiLogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+                خروج
+              </button>
+            ) : (
+              <Link
+                role="menuitem"
+                tabIndex={-1}
+                href="/"
+                className={`${headerMenuItemClassName} flex items-center justify-start gap-2 text-gray-700 hover:!bg-accent-soft`}
+              >
+                ورود
+              </Link>
+            )}
+          </li>
+        </ul>
+      </div>
+    </HeaderMenu>
   );
 }
 

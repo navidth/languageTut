@@ -369,6 +369,14 @@ option {
     background: var(--accent-soft);
     color: var(--warning);
   }
+
+  /* For text from the API that may be English: each paragraph is ordered by
+     its own first letter, so an English sentence keeps its full stop at the
+     end, while the text stays right-aligned like the rest of the page. */
+  .bidi-text {
+    unicode-bidi: plaintext;
+    text-align: right;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

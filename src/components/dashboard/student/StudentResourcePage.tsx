@@ -6,7 +6,7 @@ import { getApiErrorMessage } from "@/lib/apiErrors";
 import { studentApi, type Lesson, type PracticeTest, type Question } from "@/lib/studentApi";
 import type { Course, Level } from "@/lib/courses";
 import { formatCourseType } from "@/lib/coursePresentation";
-import { studentExamResultPath } from "@/lib/routes";
+import { studentExamResultPath, studentTestPath } from "@/lib/routes";
 import { formatSkillName } from "@/lib/skillPresentation";
 import { hasActiveSession, useSessionState } from "@/components/auth/useSessionState";
 import AsyncState from "@/components/ui/AsyncState";
@@ -97,9 +97,10 @@ export default function StudentResourcePage({
       {!loading && entry?.status !== "failed" && items.length === 0 && <AsyncState message="در حال حاضر موردی برای نمایش وجود ندارد." />}
       {!loading && entry?.status !== "failed" && entry?.data && items.length > 0 && (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {/* Level cards are small, so they sit two across even on phones. */}
+          <div className={kind === "levels" ? "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4" : "grid gap-4 md:grid-cols-2 xl:grid-cols-3"}>
             {items.map((item) => (
-              <article key={item.id} className="surface-card rounded-2xl p-5">
+              <article key={item.id} className={`surface-card rounded-2xl ${kind === "levels" ? "p-4 sm:p-5" : "p-5"}`}>
                 {kind === "levels" && <LevelCard item={item as Level} />}
                 {kind === "courses" && <CourseCard item={item as Course} />}
                 {kind === "lessons" && <LessonCard item={item as Lesson} busy={busy === item.id} action={lessonAction} />}
@@ -134,8 +135,8 @@ function CourseCard({ item }: { item: Course }) {
       <span className="brand-badge rounded-full px-3 py-1 text-sm">سطح {item.level_detail?.code}</span>
       <span className="text-sm text-muted-foreground">{type}</span>
     </div>
-    <h2 className="mt-4 text-xl font-bold">{item.title}</h2>
-    <p className="mt-2 line-clamp-3 text-sm leading-7 text-muted-foreground">{item.description || "بدون توضیحات"}</p>
+    <h2 className="bidi-text mt-4 text-xl font-bold">{item.title}</h2>
+    <p className="bidi-text mt-2 line-clamp-3 text-sm leading-7 text-muted-foreground">{item.description || "بدون توضیحات"}</p>
     <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-secondary-soft p-3 text-xs">
       <span>{item.lessons_count.toLocaleString("fa-IR")} درس</span>
       <span>{item.resources_count.toLocaleString("fa-IR")} منبع</span>
@@ -147,21 +148,21 @@ function CourseCard({ item }: { item: Course }) {
 }
 function LessonCard({ item, busy, action }: { item: Lesson; busy: boolean; action: (id: number, complete: boolean) => void }) {
   return <><div className="flex justify-between"><span className="rounded-full bg-secondary-soft px-3 py-1 text-sm font-bold text-brand-secondary dark:text-white">{formatSkillName(item.skill_detail?.name)}</span><span className="text-sm text-muted-foreground">درس {item.order}</span></div>
-    <h2 className="mt-4 text-lg font-bold">{item.title}</h2><div className="mt-3 line-clamp-3 text-sm leading-7 text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.content }} />
+    <h2 className="bidi-text mt-4 text-lg font-bold">{item.title}</h2><div className="bidi-text mt-3 line-clamp-3 text-sm leading-7 text-muted-foreground [&_img]:h-auto [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: item.content }} />
     <div className="mt-5 flex gap-2"><button disabled={busy} onClick={() => action(item.id, false)} className="brand-button rounded-xl px-4 py-2 text-sm">شروع درس</button><button disabled={busy} onClick={() => action(item.id, true)} className="ghost-button rounded-xl px-4 py-2 text-sm">تکمیل شد</button></div></>;
 }
 function QuestionCard({ item }: { item: Question }) {
   const options = Array.isArray(item.options) ? item.options : [];
-  return <><span className="text-xs text-muted-foreground">نوع: {item.question_type}</span><h2 className="mt-3 font-bold leading-7">{item.question_text}</h2>
+  return <><span className="text-xs text-muted-foreground">نوع: {item.question_type}</span><h2 className="bidi-text mt-3 font-bold leading-7">{item.question_text}</h2>
     {options.length > 0 && <ul className="mt-4 space-y-2">{options.map((x, i) => <li key={i} className="rounded-lg bg-secondary-soft p-2 text-sm">{String(x)}</li>)}</ul>}</>;
 }
 function TestCard({ item, hasResult }: { item: PracticeTest; hasResult: boolean }) {
   return <><div className="flex justify-between"><span className="brand-badge rounded-full px-3 py-1 text-sm">سطح {item.level}</span><span className="text-sm text-muted-foreground">{item.duration_minutes} دقیقه</span></div>
-    <h2 className="mt-4 text-xl font-bold">{item.title}</h2><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description || "آزمون تمرینی"}</p>
+    <h2 className="bidi-text mt-4 text-xl font-bold">{item.title}</h2><p className="bidi-text mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description || "آزمون تمرینی"}</p>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-2"><span className="text-sm">{item.questions_count} سؤال</span>
       <div className="flex flex-wrap justify-end gap-2">
         {hasResult && <Link href={studentExamResultPath(item.id)} className="ghost-button rounded-xl px-4 py-2 text-sm">مشاهده نتیجه</Link>}
-        <Link href={`/student/tests/${item.id}`} className="brand-button rounded-xl px-4 py-2 text-sm">ورود به آزمون</Link>
+        <Link href={studentTestPath(item.id, item.is_free === false ? item.course : undefined)} className="brand-button rounded-xl px-4 py-2 text-sm">ورود به آزمون</Link>
       </div>
     </div></>;
 }

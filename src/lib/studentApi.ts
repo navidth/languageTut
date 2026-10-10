@@ -62,10 +62,25 @@ export type PracticeTest = {
   duration_minutes: number;
   is_published: boolean;
   questions_count: number;
+  /** `null` means unlimited attempts. */
+  max_attempts?: number | null;
+  is_free?: boolean;
+  /** Exam media returns 403 until an attempt starts, unless `available_before_start`. */
   media?: PracticeTestMedia[];
+  /** Detail only: questions stay hidden until an attempt starts. */
+  questions_locked?: boolean;
+  /** Detail only: the attempt currently running for this student. */
+  active_submission?: ActiveSubmission | null;
   questions?: Question[];
   sections?: ExamSection[];
 };
+export type ActiveSubmission = {
+  id: number;
+  started_at: string;
+  /** `null` when the test has no time limit. */
+  deadline: string | null;
+};
+export type GradingStatus = "in_progress" | "expired" | "pending" | "graded";
 export type PracticeTestAnswerRequest = {
   question: number;
   answer_text: string;
@@ -80,7 +95,9 @@ export type PracticeTestAttempt = {
   practice_test_title?: string;
   exam_type?: string;
   started_at?: string;
+  deadline?: string | null;
   submitted_at?: string | null;
+  grading_status?: GradingStatus | (string & {});
   total_score?: string;
   max_score?: string;
   percentage?: string;
@@ -103,8 +120,10 @@ export type ExamSubmission = {
   practice_test_title: string;
   exam_type: ExamType | (string & {});
   started_at: string;
-  /** `null` while the attempt is still in progress. */
+  deadline?: string | null;
+  /** `null` while the attempt is still in progress, or after it expired. */
   submitted_at: string | null;
+  grading_status?: GradingStatus | (string & {});
   total_score: string;
   max_score: string;
   percentage: string;
@@ -160,8 +179,10 @@ export const studentApi = {
   tests: (page = 1) => list<PracticeTest>("/api/practice-tests/", page),
   test: async (id: number) =>
     (await apiClient.get<PracticeTest>(`/api/practice-tests/${id}/`)).data,
+  /** Starts an attempt, or returns the one already running. */
   startTest: async (id: number) =>
     (await apiClient.post<PracticeTestAttempt>(`/api/practice-tests/${id}/start/`, {})).data,
+  /** Needs a running attempt; returns 400 without one or after its deadline. */
   submitTest: async (id: number, data: PracticeTestSubmitRequest) =>
     (await apiClient.post<PracticeTestAttempt>(`/api/practice-tests/${id}/submit/`, data)).data,
   mySubmissions: async () => {

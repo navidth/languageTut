@@ -1,4 +1,5 @@
 import type { StatusTone } from "@/types";
+import { formatPersianDateTime } from "./date";
 import {
   HOMEWORK_SCOPES,
   type Homework,
@@ -9,9 +10,11 @@ import { parsePageParam } from "./pagination";
 /**
  * UI state of a homework for the current student. The backend only reports
  * `submitted` / `graded` on a submission, so the remaining states are derived
- * from `my_submission`, `is_past_due` and `allow_late_submissions`.
+ * from `my_submission`, `has_started`, `is_past_due` and
+ * `allow_late_submissions`.
  */
 export type HomeworkDisplayStatus =
+  | "not-started"
   | "open"
   | "late-open"
   | "closed"
@@ -22,7 +25,12 @@ export type HomeworkDisplayStatus =
 
 type HomeworkStatusSource = Pick<
   Homework,
-  "is_published" | "is_past_due" | "allow_late_submissions" | "my_submission"
+  | "is_published"
+  | "has_started"
+  | "is_past_due"
+  | "is_open"
+  | "allow_late_submissions"
+  | "my_submission"
 >;
 
 export function resolveHomeworkStatus(
@@ -34,6 +42,7 @@ export function resolveHomeworkStatus(
     return submission.is_late ? "submitted-late" : "submitted";
   }
   if (!homework.is_published) return "unpublished";
+  if (!homework.has_started) return "not-started";
   if (homework.is_past_due) {
     return homework.allow_late_submissions ? "late-open" : "closed";
   }
@@ -41,6 +50,7 @@ export function resolveHomeworkStatus(
 }
 
 export const homeworkStatusLabels: Record<HomeworkDisplayStatus, string> = {
+  "not-started": "هنوز شروع نشده",
   open: "در انتظار ارسال",
   "late-open": "مهلت گذشته · ارسال با تأخیر",
   closed: "مهلت به پایان رسیده",
@@ -51,6 +61,7 @@ export const homeworkStatusLabels: Record<HomeworkDisplayStatus, string> = {
 };
 
 export const homeworkStatusDescriptions: Record<HomeworkDisplayStatus, string> = {
+  "not-started": "ارسال پاسخ برای این تکلیف هنوز باز نشده است.",
   open: "پاسخ خود را پیش از پایان مهلت بارگذاری کنید.",
   "late-open":
     "مهلت این تکلیف گذشته است، اما ارسال با تأخیر همچنان پذیرفته می‌شود.",
@@ -63,6 +74,7 @@ export const homeworkStatusDescriptions: Record<HomeworkDisplayStatus, string> =
 };
 
 export const homeworkStatusTones: Record<HomeworkDisplayStatus, StatusTone> = {
+  "not-started": "neutral",
   open: "info",
   "late-open": "warning",
   closed: "danger",
@@ -72,16 +84,20 @@ export const homeworkStatusTones: Record<HomeworkDisplayStatus, StatusTone> = {
   unpublished: "neutral",
 };
 
-export function isSubmissionWindowOpen(
-  homework: Pick<
-    Homework,
-    "is_published" | "is_past_due" | "allow_late_submissions"
-  >,
+/** Uses the server's `is_open`, which also covers a start time still ahead. */
+export function isSubmissionWindowOpen(homework: Pick<Homework, "is_open">) {
+  return homework.is_open;
+}
+
+/** The status sentence, with the opening time when it is still ahead. */
+export function describeHomeworkStatus(
+  homework: HomeworkStatusSource & Pick<Homework, "starts_at">,
 ) {
-  return (
-    homework.is_published &&
-    (!homework.is_past_due || homework.allow_late_submissions)
-  );
+  const status = resolveHomeworkStatus(homework);
+  if (status === "not-started" && homework.starts_at) {
+    return `ارسال پاسخ از ${formatPersianDateTime(homework.starts_at)} امکان‌پذیر است.`;
+  }
+  return homeworkStatusDescriptions[status];
 }
 
 /** Covers both the first upload and replacing a not-yet-graded submission. */

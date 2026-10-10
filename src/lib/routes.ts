@@ -8,8 +8,11 @@ export const ROUTES = {
   ai: "/ai",
 } as const;
 
-export function studentTestPath(testId: number) {
-  return `${ROUTES.studentTests}/${testId}`;
+/** `course` lets the test page offer that course for purchase on a 403. */
+export function studentTestPath(testId: number, course?: number) {
+  return course
+    ? `${ROUTES.studentTests}/${testId}?course=${course}`
+    : `${ROUTES.studentTests}/${testId}`;
 }
 
 export function studentExamResultPath(testId: number) {

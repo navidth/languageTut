@@ -9,10 +9,6 @@ import {
   HiOutlineDocumentText,
   HiRefresh,
 } from "react-icons/hi";
-import {
-  hasActiveSession,
-  useSessionState,
-} from "@/components/auth/useSessionState";
 import PageMessage from "@/components/ui/PageMessage";
 import { Skeleton } from "@/components/ui/Skeleton";
 import StatusBadge, { toneTextClasses } from "@/components/ui/StatusBadge";
@@ -21,8 +17,8 @@ import { formatPersianDate, formatPersianDateTime } from "@/lib/date";
 import { formatDecimal } from "@/lib/format";
 import {
   describeDueDate,
+  describeHomeworkStatus,
   formatHomeworkScope,
-  homeworkStatusDescriptions,
   homeworkStatusLabels,
   homeworkStatusTones,
   resolveHomeworkStatus,
@@ -30,9 +26,9 @@ import {
 import { ROUTES } from "@/lib/routes";
 import { selectKnownCourseTitles } from "@/store/courseTitles";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { fetchHomework } from "@/store/homeworkSlice";
-import { fetchStudentOverview } from "@/store/studentSlice";
+import { fetchHomework, fetchHomeworkSubmission } from "@/store/homeworkSlice";
 import type { StatusTone } from "@/types";
+import HomeworkAttachments from "./HomeworkAttachments";
 import HomeworkSubmissionPanel from "./HomeworkSubmissionPanel";
 
 const errorMessages: Partial<Record<ApiErrorKind, string>> = {
@@ -50,7 +46,6 @@ const noticeClasses: Record<StatusTone, string> = {
 
 export default function HomeworkDetailPage({ id }: { id: number }) {
   const dispatch = useAppDispatch();
-  const session = useSessionState();
   const validId = Number.isInteger(id) && id > 0;
   const userId = useAppSelector((state) => state.auth.user?.id ?? null);
   const entry = useAppSelector((state) =>
@@ -63,10 +58,6 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
     if (validId) void dispatch(fetchHomework({ id }));
   }, [dispatch, id, userId, validId]);
 
-  useEffect(() => {
-    if (hasActiveSession(session)) void dispatch(fetchStudentOverview());
-  }, [dispatch, session]);
-
   if (!validId) {
     return (
       <PageMessage
@@ -78,7 +69,13 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
   }
 
   const homework = entry?.data ?? null;
-  const reload = () => void dispatch(fetchHomework({ id, force: true }));
+  const reload = () => {
+    void dispatch(fetchHomework({ id, force: true }));
+    const submissionId = homework?.my_submission?.id;
+    if (submissionId) {
+      void dispatch(fetchHomeworkSubmission({ id: submissionId, force: true }));
+    }
+  };
 
   if (!homework) {
     if (entry?.status !== "failed") return <DetailSkeleton />;
@@ -99,11 +96,13 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
   const status = resolveHomeworkStatus(homework);
   const tone = homeworkStatusTones[status];
   const refreshing = entry?.status === "loading";
-  const due = homework.my_submission
+  const due = homework.my_submission || status === "not-started"
     ? null
     : describeDueDate(homework.due_at, entry?.lastFetched);
+  // The homework names its course, so no enrollment request is needed here.
   const courseTitle =
-    courseTitles[homework.course] ??
+    homework.course_title ||
+    courseTitles[homework.course] ||
     `دوره ${homework.course.toLocaleString("fa-IR")}`;
 
   return (
@@ -133,7 +132,7 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
         </p>
       </header>
 
-      <dl className="grid gap-4 sm:grid-cols-2">
+      <dl className="grid grid-cols-2 gap-3 sm:gap-4">
         <Fact
           icon={<HiCalendar />}
           label="مهلت تحویل"
@@ -155,18 +154,26 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
           label="ارسال با تأخیر"
           value={homework.allow_late_submissions ? "پذیرفته می‌شود" : "پذیرفته نمی‌شود"}
         />
-        <Fact
-          icon={<HiOutlineDocumentText />}
-          label="تاریخ ایجاد"
-          value={formatPersianDate(homework.created_at)}
-        />
+        {homework.starts_at ? (
+          <Fact
+            icon={<HiOutlineDocumentText />}
+            label="شروع ارسال"
+            value={formatPersianDateTime(homework.starts_at)}
+          />
+        ) : (
+          <Fact
+            icon={<HiOutlineDocumentText />}
+            label="تاریخ ایجاد"
+            value={formatPersianDate(homework.created_at)}
+          />
+        )}
       </dl>
 
       <div
         className={`${noticeClasses[tone]} mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 text-sm`}
         role="status"
       >
-        <span>{homeworkStatusDescriptions[status]}</span>
+        <span>{describeHomeworkStatus(homework)}</span>
         <button
           type="button"
           disabled={refreshing}
@@ -203,6 +210,8 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
         </div>
       </section>
 
+      <HomeworkAttachments attachments={homework.attachments ?? []} />
+
       <HomeworkSubmissionPanel homework={homework} />
     </article>
   );
@@ -222,7 +231,8 @@ function Fact({
   hintClassName?: string;
 }) {
   return (
-    <div className="surface-card flex items-start gap-3 rounded-2xl p-4">
+    // Two across on phones too, with the icon above the text there.
+    <div className="surface-card flex flex-col items-start gap-2 rounded-2xl p-3 sm:flex-row sm:gap-3 sm:p-4">
       <span
         className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-lg text-brand-accent"
         aria-hidden="true"

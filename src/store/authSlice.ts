@@ -1,13 +1,17 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
   authApi,
+  type AuthFeatures,
   type LoginRequest,
+  type PhoneLoginRequest,
+  type PatchedUserRequest,
   type RegisterRequest,
-  type UpdateProfileRequest,
   type User,
+  type UserRequest,
 } from "@/lib/auth";
 import { clearAuthStorage } from "@/lib/apiClient";
-import { getApiErrorMessage } from "@/lib/apiErrors";
+import { getApiErrorMessage, normalizeApiError, type ApiFieldErrors } from "@/lib/apiErrors";
+import { isCacheFresh } from "@/lib/cache";
 
 type AuthState = {
   user: User | null;
@@ -15,6 +19,10 @@ type AuthState = {
   error: string | null;
   profileUpdateStatus: "idle" | "loading" | "succeeded" | "failed";
   profileUpdateError: string | null;
+  /** Account features from `/api/auth/features/`; `null` until loaded. */
+  features: AuthFeatures | null;
+  featuresStatus: "idle" | "loading" | "succeeded" | "failed";
+  featuresLastFetched: number | null;
 };
 
 const initialState: AuthState = {
@@ -23,7 +31,37 @@ const initialState: AuthState = {
   error: null,
   profileUpdateStatus: "idle",
   profileUpdateError: null,
+  features: null,
+  featuresStatus: "idle",
+  featuresLastFetched: null,
 };
+
+/** Features are the same for every visitor, so they survive sign-in and sign-out. */
+export const fetchAuthFeatures = createAsyncThunk<
+  AuthFeatures,
+  void,
+  { state: { auth: AuthState }; rejectValue: string }
+>(
+  "auth/features",
+  async (_, api) => {
+    try {
+      return await authApi.features();
+    } catch (error) {
+      return api.rejectWithValue(getApiErrorMessage(error));
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { featuresStatus, featuresLastFetched } = getState().auth;
+      return featuresStatus !== "loading" && !isCacheFresh(featuresLastFetched);
+    },
+  },
+);
+
+/** SMS flows stay hidden until the backend says they are on. */
+export function selectSmsEnabled(state: { auth: AuthState }) {
+  return state.auth.features?.sms_enabled === true;
+}
 
 function persistUser(user: User) {
   localStorage.setItem("user", JSON.stringify(user));
@@ -36,9 +74,13 @@ function persistSession(access: string, refresh: string, user: User) {
   persistUser(user);
 }
 
-export const login = createAsyncThunk("auth/login", async (payload: LoginRequest, api) => {
+// Password and SMS-code logins share one thunk, so every slice that resets on
+// `login.fulfilled` covers both.
+export const login = createAsyncThunk("auth/login", async (payload: LoginRequest | PhoneLoginRequest, api) => {
   try {
-    const session = await authApi.login(payload);
+    const session = "code" in payload
+      ? await authApi.loginWithCode(payload)
+      : await authApi.login(payload);
     persistSession(session.access, session.refresh, session.user);
     return session.user;
   } catch (error) {
@@ -73,17 +115,33 @@ export const loadMe = createAsyncThunk("auth/me", async (_, api) => {
   },
 });
 
-export const updateProfile = createAsyncThunk(
+/** PATCH sends only changed fields; PUT replaces all editable fields at once. */
+export type ProfileUpdate =
+  | { method: "patch"; data: PatchedUserRequest }
+  | { method: "put"; data: UserRequest };
+
+/** Field errors are keyed by API field name, e.g. `current_password`. */
+export type ProfileUpdateError = { message: string; fieldErrors: ApiFieldErrors };
+
+export const updateProfile = createAsyncThunk<
+  User,
+  ProfileUpdate,
+  { rejectValue: ProfileUpdateError }
+>(
   "auth/updateProfile",
-  async (payload: UpdateProfileRequest, api) => {
+  async (payload, api) => {
     try {
-      const user = await authApi.updateMe(payload);
+      const user = payload.method === "put"
+        ? await authApi.replaceMe(payload.data)
+        : await authApi.updateMe(payload.data);
       persistUser(user);
       return user;
     } catch (error) {
-      return api.rejectWithValue(
-        getApiErrorMessage(error, "ذخیره اطلاعات پروفایل ناموفق بود."),
-      );
+      const apiError = normalizeApiError(error, "ذخیره اطلاعات پروفایل ناموفق بود.");
+      return api.rejectWithValue({
+        message: apiError.message,
+        fieldErrors: apiError.fieldErrors,
+      });
     }
   },
 );
@@ -120,6 +178,18 @@ const authSlice = createSlice({
         state.user = null;
         rejected(state, action);
       })
+      .addCase(fetchAuthFeatures.pending, (state) => {
+        state.featuresStatus = "loading";
+      })
+      .addCase(fetchAuthFeatures.fulfilled, (state, action) => {
+        state.features = action.payload;
+        state.featuresStatus = "succeeded";
+        state.featuresLastFetched = Date.now();
+      })
+      .addCase(fetchAuthFeatures.rejected, (state) => {
+        // Keeps the last known answer; with none, SMS stays off.
+        state.featuresStatus = "failed";
+      })
       .addCase(updateProfile.pending, (state) => {
         state.profileUpdateStatus = "loading";
         state.profileUpdateError = null;
@@ -131,12 +201,18 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.profileUpdateStatus = "failed";
-        state.profileUpdateError = String(
-          action.payload ?? "ذخیره اطلاعات پروفایل ناموفق بود.",
-        );
+        state.profileUpdateError =
+          action.payload?.message ?? "ذخیره اطلاعات پروفایل ناموفق بود.";
       });
   },
 });
 
 export const { logout } = authSlice.actions;
+
+/** Signs out locally at once, then asks the server to revoke the refresh token. */
+export const signOut = createAsyncThunk("auth/signOut", async (_, api) => {
+  const refresh = localStorage.getItem("refreshToken");
+  api.dispatch(logout());
+  if (refresh) await authApi.logout(refresh).catch(() => undefined);
+});
 export default authSlice.reducer;

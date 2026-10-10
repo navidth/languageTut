@@ -2,6 +2,8 @@
 
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -10,6 +12,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { hasStoredSession as hasSavedSession } from "@/lib/apiClient";
 import type { User } from "@/lib/auth";
 import {
   type AuthIntent,
@@ -17,9 +20,13 @@ import {
   resolvePostAuthenticationFlow,
 } from "@/lib/authFlow";
 import { PLACEMENT_SECTION_ID, ROUTES } from "@/lib/routes";
-import { loadMe } from "@/store/authSlice";
+import { fetchAuthFeatures, loadMe } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import AuthenticationModal from "./AuthenticationModal";
+
+const loadAuthenticationModal = () => import("./AuthenticationModal");
+// The modal is only downloaded once it is needed, so pages for signed-in
+// users do not carry it.
+const AuthenticationModal = lazy(loadAuthenticationModal);
 
 type AuthFlowContextValue = {
   startAuthFlow: (intent?: AuthIntent) => Promise<void>;
@@ -34,6 +41,8 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
   const pathname = usePathname();
   const { error: authError, status, user } = useAppSelector((state) => state.auth);
   const [modalOpen, setModalOpen] = useState(false);
+  // Stays true after the first open, so closing can still animate.
+  const [modalMounted, setModalMounted] = useState(false);
   const [intent, setIntent] = useState<AuthIntent>("learning");
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -43,6 +52,29 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
   useEffect(() => {
     navigationStartedRef.current = false;
   }, [pathname]);
+
+  // Visitors without a session are the ones likely to sign in, so fetch the
+  // modal and the account features that shape it in the background once the
+  // page has settled.
+  useEffect(() => {
+    if (hasSavedSession()) return;
+    const preload = () => {
+      void loadAuthenticationModal();
+      void dispatch(fetchAuthFeatures());
+    };
+    // Safari has no requestIdleCallback.
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(preload);
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timer = window.setTimeout(preload, 2000);
+    return () => window.clearTimeout(timer);
+  }, [dispatch]);
+
+  const openModal = useCallback(() => {
+    setModalMounted(true);
+    setModalOpen(true);
+  }, []);
 
   const continueFlow = useCallback((
     latestUser: User,
@@ -96,10 +128,10 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
         setCheckingProfile(false);
         setIntent(queuedIntent);
         setProfileError(authError ?? "دریافت آخرین اطلاعات پروفایل ناموفق بود. لطفاً دوباره وارد شوید.");
-        setModalOpen(true);
+        openModal();
       });
     }
-  }, [authError, continueFlow, status, user]);
+  }, [authError, continueFlow, openModal, status, user]);
 
   const startAuthFlow = useCallback(async (requestedIntent: AuthIntent = "learning") => {
     if (checkingProfile || modalOpen) return;
@@ -122,14 +154,14 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
     );
 
     if (!hasStoredSession) {
-      setModalOpen(true);
+      openModal();
       return;
     }
 
     queuedIntentRef.current = requestedIntent;
     setCheckingProfile(true);
     void dispatch(loadMe()).unwrap().catch(() => undefined);
-  }, [checkingProfile, continueFlow, dispatch, modalOpen, status, user]);
+  }, [checkingProfile, continueFlow, dispatch, modalOpen, openModal, status, user]);
 
   const handleAuthenticated = useCallback((
     latestUser: User,
@@ -148,15 +180,19 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
   return (
     <AuthFlowContext.Provider value={value}>
       {children}
-      <AuthenticationModal
-        open={modalOpen}
-        profileError={profileError}
-        onClose={() => {
-          setModalOpen(false);
-          setProfileError("");
-        }}
-        onAuthenticated={handleAuthenticated}
-      />
+      {modalMounted && (
+        <Suspense fallback={null}>
+          <AuthenticationModal
+            open={modalOpen}
+            profileError={profileError}
+            onClose={() => {
+              setModalOpen(false);
+              setProfileError("");
+            }}
+            onAuthenticated={handleAuthenticated}
+          />
+        </Suspense>
+      )}
     </AuthFlowContext.Provider>
   );
 }

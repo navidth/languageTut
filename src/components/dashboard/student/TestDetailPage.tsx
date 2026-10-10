@@ -2,113 +2,169 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { getApiErrorMessage } from "@/lib/apiErrors";
+import { getApiErrorMessage, normalizeApiError } from "@/lib/apiErrors";
+import type { Course } from "@/lib/courses";
 import { formatRecommendedLevel } from "@/lib/examPresentation";
 import { formatRemainingTime } from "@/lib/format";
 import { studentExamResultPath } from "@/lib/routes";
 import {
   studentApi,
+  type ActiveSubmission,
   type PracticeTest,
   type PracticeTestAttempt,
 } from "@/lib/studentApi";
 import { useAppDispatch } from "@/store/hooks";
 import { invalidateExamSubmissions } from "@/store/studentSlice";
-import PracticeTestMedia from "./PracticeTestMedia";
+import PracticeTestMedia, { mediaAvailableBeforeStart } from "./PracticeTestMedia";
 import TestQuestionCard from "./TestQuestionCard";
 
 export { formatRemainingTime } from "@/lib/format";
 
-type StartRequest = {
-  id: number;
-  promise: Promise<PracticeTestAttempt>;
-};
+/** The server rejects late submits, so answers are sent a little early. */
+export const AUTO_SUBMIT_LEAD_MS = 5_000;
 
-export default function TestDetailPage({ id }: { id: number }) {
+const EXPIRED_MESSAGE =
+  "زمان این تلاش به پایان رسیده بود و پاسخ‌ها ثبت نشد.";
+
+type LoadError = { message: string; forbidden: boolean };
+
+function answersStorageKey(attemptId: number) {
+  return `practice-test-answers:${attemptId}`;
+}
+
+// Answers survive a reload while the attempt is still running.
+function readStoredAnswers(attemptId: number): Record<number, string> {
+  try {
+    const value = JSON.parse(
+      window.localStorage.getItem(answersStorageKey(attemptId)) ?? "{}",
+    ) as unknown;
+    return value && typeof value === "object"
+      ? (value as Record<number, string>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredAnswers(attemptId: number, answers: Record<number, string> | null) {
+  try {
+    if (answers) {
+      window.localStorage.setItem(answersStorageKey(attemptId), JSON.stringify(answers));
+    } else {
+      window.localStorage.removeItem(answersStorageKey(attemptId));
+    }
+  } catch {
+    // Storage can be unavailable; answers then live in memory only.
+  }
+}
+
+function attemptFromStart(
+  result: PracticeTestAttempt,
+): ActiveSubmission | null {
+  const id = result.id ?? result.submission_id;
+  if (id == null || !result.started_at) return null;
+  return { id, started_at: result.started_at, deadline: result.deadline ?? null };
+}
+
+export default function TestDetailPage({
+  id,
+  courseId,
+}: {
+  id: number;
+  /** Lets a paid test that answers 403 link to its course for purchase. */
+  courseId?: number;
+}) {
   const dispatch = useAppDispatch();
   const [test, setTest] = useState<PracticeTest | null>(null);
+  const [loadError, setLoadError] = useState<LoadError | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [attempt, setAttempt] = useState<ActiveSubmission | null>(null);
+  const [attemptEnded, setAttemptEnded] = useState(false);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [loadingError, setLoadingError] = useState("");
+  const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [starting, setStarting] = useState(true);
-  const [started, setStarted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [submission, setSubmission] = useState<PracticeTestAttempt | null>(
-    null,
-  );
-  const [startAttempt, setStartAttempt] = useState<PracticeTestAttempt | null>(
     null,
   );
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
-  const startRequestRef = useRef<StartRequest | null>(null);
-  const timeoutSubmissionRef = useRef<number | null>(null);
+  const autoSubmittedRef = useRef<number | null>(null);
 
-  const startTest = useCallback(
-    async (force = false) => {
-      setStarting(true);
-      setStartError("");
-
-      if (force || startRequestRef.current?.id !== id) {
-        startRequestRef.current = {
-          id,
-          promise: studentApi.startTest(id),
-        };
-      }
-
-      const request = startRequestRef.current;
-      try {
-        const attempt = await request.promise;
-        setStartAttempt(attempt);
-        setStarted(true);
-      } catch (error) {
-        if (startRequestRef.current === request) {
-          startRequestRef.current = null;
-        }
-        setStarted(false);
-        setStartError(
-          getApiErrorMessage(error, "شروع آزمون ناموفق بود. دوباره تلاش کنید."),
-        );
-      } finally {
-        setStarting(false);
-      }
-    },
-    [id],
-  );
+  const beginAttempt = useCallback((running: ActiveSubmission | null) => {
+    setAttempt(running);
+    setAnswers(running ? readStoredAnswers(running.id) : {});
+  }, []);
 
   useEffect(() => {
     let active = true;
     setTest(null);
+    setLoadError(null);
+    setCourse(null);
+    setAttempt(null);
+    setAttemptEnded(false);
     setAnswers({});
-    setLoadingError("");
+    setStartError("");
+    setSubmitError("");
     setSubmission(null);
-    setStartAttempt(null);
     setRemainingSeconds(null);
     setTimedOut(false);
-    timeoutSubmissionRef.current = null;
-    setSubmitError("");
+    autoSubmittedRef.current = null;
 
+    // Only reads here: an attempt starts when the student asks for it, and a
+    // running one comes back as `active_submission`.
     void studentApi
       .test(id)
       .then((result) => {
-        if (active) setTest(result);
+        if (!active) return;
+        setTest(result);
+        beginAttempt(result.active_submission ?? null);
       })
       .catch((error) => {
-        if (active) {
-          setLoadingError(
-            getApiErrorMessage(
-              error,
-              "دریافت آزمون ناموفق بود یا به آن دسترسی ندارید.",
-            ),
-          );
+        if (!active) return;
+        const apiError = normalizeApiError(
+          error,
+          "دریافت آزمون ناموفق بود یا به آن دسترسی ندارید.",
+        );
+        const forbidden = apiError.status === 403;
+        setLoadError({ message: apiError.message, forbidden });
+        if (forbidden && courseId) {
+          void studentApi
+            .course(courseId)
+            .then((result) => {
+              if (active) setCourse(result);
+            })
+            .catch(() => undefined);
         }
       });
 
-    void startTest();
     return () => {
       active = false;
     };
-  }, [id, startTest]);
+  }, [beginAttempt, courseId, id]);
+
+  const startTest = useCallback(async () => {
+    if (starting) return;
+    setStarting(true);
+    setStartError("");
+    try {
+      // Safe to repeat: a running attempt is returned instead of a new one.
+      const started = await studentApi.startTest(id);
+      const detail = await studentApi.test(id);
+      setTest(detail);
+      setAttemptEnded(false);
+      setSubmitError("");
+      setTimedOut(false);
+      beginAttempt(detail.active_submission ?? attemptFromStart(started));
+    } catch (error) {
+      setStartError(
+        getApiErrorMessage(error, "شروع آزمون ناموفق بود. دوباره تلاش کنید."),
+      );
+    } finally {
+      setStarting(false);
+    }
+  }, [beginAttempt, id, starting]);
 
   const questions = useMemo(() => test?.questions ?? [], [test]);
   const answeredCount = useMemo(
@@ -124,47 +180,43 @@ export default function TestDetailPage({ id }: { id: number }) {
       ),
     [submission],
   );
+  const running = Boolean(attempt) && !submission && !attemptEnded;
 
   useEffect(() => {
-    if (!started || !test || submission) return;
-
-    const serverStartedAt = startAttempt?.started_at
-      ? Date.parse(startAttempt.started_at)
-      : Number.NaN;
-    const startedAt = Number.isFinite(serverStartedAt)
-      ? serverStartedAt
-      : Date.now();
-    const deadline = startedAt + Math.max(0, test.duration_minutes) * 60_000;
+    if (!running || !attempt?.deadline) {
+      setRemainingSeconds(null);
+      return;
+    }
+    const deadline = Date.parse(attempt.deadline);
+    if (!Number.isFinite(deadline)) return;
 
     const updateTimer = () => {
-      const nextSeconds = Math.max(
-        0,
-        Math.ceil((deadline - Date.now()) / 1000),
-      );
-      setRemainingSeconds(nextSeconds);
-      if (nextSeconds === 0) setTimedOut(true);
+      const remaining = deadline - Date.now();
+      setRemainingSeconds(Math.max(0, Math.ceil(remaining / 1000)));
+      if (remaining <= AUTO_SUBMIT_LEAD_MS) setTimedOut(true);
     };
 
     updateTimer();
     const timer = window.setInterval(updateTimer, 1000);
     return () => window.clearInterval(timer);
-  }, [startAttempt?.started_at, started, submission, test]);
+  }, [attempt?.deadline, running]);
 
-  const updateAnswer = useCallback((questionId: number, value: string) => {
-    if (!started || timedOut || submission) return;
-    setAnswers((current) => ({ ...current, [questionId]: value }));
-    setSubmitError("");
-  }, [started, submission, timedOut]);
+  const updateAnswer = useCallback(
+    (questionId: number, value: string) => {
+      if (!attempt || !running || timedOut) return;
+      setAnswers((current) => {
+        const next = { ...current, [questionId]: value };
+        writeStoredAnswers(attempt.id, next);
+        return next;
+      });
+      setSubmitError("");
+    },
+    [attempt, running, timedOut],
+  );
 
   const submitTest = useCallback(
     async (force = false) => {
-      if (
-        !test ||
-        !started ||
-        (!force && !allAnswered) ||
-        submitting ||
-        submission
-      )
+      if (!test || !attempt || !running || (!force && !allAnswered) || submitting)
         return;
 
       setSubmitting(true);
@@ -176,16 +228,40 @@ export default function TestDetailPage({ id }: { id: number }) {
             answer_text: (answers[question.id] ?? "").trim(),
           })),
         });
-        setSubmission(result);
+        writeStoredAnswers(attempt.id, null);
+        if (result.grading_status === "expired") {
+          setAttemptEnded(true);
+          setSubmitError(EXPIRED_MESSAGE);
+        } else {
+          setSubmission(result);
+        }
         // The cached exam history does not include this attempt yet.
         dispatch(invalidateExamSubmissions());
       } catch (error) {
-        setSubmitError(
-          getApiErrorMessage(
-            error,
-            "ثبت نهایی آزمون ناموفق بود. دوباره تلاش کنید.",
-          ),
+        const apiError = normalizeApiError(
+          error,
+          "ثبت نهایی آزمون ناموفق بود. دوباره تلاش کنید.",
         );
+        if (apiError.status !== 400) {
+          setSubmitError(apiError.message);
+          return;
+        }
+        // A 400 means a late submit or no running attempt; ask which.
+        const detail = await studentApi.test(id).catch(() => null);
+        if (detail) setTest(detail);
+        if (detail?.active_submission) {
+          setSubmitError(apiError.message);
+          return;
+        }
+        const deadline = attempt.deadline ? Date.parse(attempt.deadline) : Number.NaN;
+        writeStoredAnswers(attempt.id, null);
+        setAttemptEnded(true);
+        setSubmitError(
+          timedOut || deadline <= Date.now()
+            ? EXPIRED_MESSAGE
+            : "این تلاش دیگر فعال نیست. برای ادامه، آزمون را دوباره شروع کنید.",
+        );
+        dispatch(invalidateExamSubmissions());
       } finally {
         setSubmitting(false);
       }
@@ -193,46 +269,69 @@ export default function TestDetailPage({ id }: { id: number }) {
     [
       allAnswered,
       answers,
+      attempt,
       dispatch,
       id,
       questions,
-      started,
-      submission,
+      running,
       submitting,
       test,
+      timedOut,
     ],
   );
 
   useEffect(() => {
     if (
       !timedOut ||
-      !test ||
-      !started ||
-      submission ||
+      !attempt ||
+      !running ||
       submitting ||
-      timeoutSubmissionRef.current === id
+      autoSubmittedRef.current === attempt.id
     )
       return;
 
-    timeoutSubmissionRef.current = id;
+    autoSubmittedRef.current = attempt.id;
     void submitTest(true);
-  }, [id, started, submission, submitTest, submitting, test, timedOut]);
+  }, [attempt, running, submitTest, submitting, timedOut]);
 
-  if (loadingError) {
+  if (loadError) {
+    const buyCourse = loadError.forbidden && course && !course.has_access;
     return (
-      <div className="feedback-error rounded-2xl p-6" role="alert">
-        {loadingError}
-      </div>
+      <section className="mx-auto max-w-4xl">
+        <Link href="/student/tests" className="brand-link text-sm">
+          → بازگشت به آزمون‌ها
+        </Link>
+        <div className="feedback-error mt-5 rounded-2xl p-6" role="alert">
+          <p>{loadError.message}</p>
+          {buyCourse && (
+            <Link
+              href={`/student/all-courses/${course.id}`}
+              className="brand-button mt-4 inline-block rounded-xl px-5 py-2.5 text-sm"
+            >
+              خرید دوره «{course.title}»
+            </Link>
+          )}
+          {loadError.forbidden && !course && (
+            <Link
+              href="/student/all-courses"
+              className="ghost-button mt-4 inline-block rounded-xl px-5 py-2.5 text-sm"
+            >
+              مشاهده دوره‌ها
+            </Link>
+          )}
+        </div>
+      </section>
     );
   }
   if (!test)
     return <div className="p-10 text-center">در حال دریافت آزمون...</div>;
 
-  const inputsDisabled =
-    !started || starting || timedOut || submitting || Boolean(submission);
+  const inputsDisabled = !running || starting || timedOut || submitting;
   const recommendedLevel = formatRecommendedLevel(
     submission?.recommended_level,
   );
+  const canStart = !attempt && !submission;
+  const canRestart = attemptEnded && !submission;
 
   return (
     <section className="mx-auto max-w-4xl">
@@ -259,33 +358,40 @@ export default function TestDetailPage({ id }: { id: number }) {
             </p>
           </div>
         </div>
-        <p className="page-hero-muted mt-4">{test.description}</p>
+        <p className="page-hero-muted bidi-text mt-4">{test.description}</p>
       </header>
 
-      {starting && (
-        <div
-          className="feedback-warning mb-5 rounded-2xl p-4 text-sm"
-          role="status"
-        >
-          در حال شروع آزمون...
-        </div>
-      )}
-      {startError && (
-        <div
-          className="feedback-error mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
-          role="alert"
-        >
-          <span>{startError}</span>
+      {(canStart || canRestart) && (
+        <div className="surface-card mb-5 rounded-2xl p-5">
+          <p className="font-bold">
+            {canRestart ? "این تلاش به پایان رسید." : "آماده شروع هستید؟"}
+          </p>
+          <p className="mt-2 text-sm leading-7 text-muted-foreground">
+            سؤال‌ها پس از شروع نمایش داده می‌شوند و زمان آزمون از همان لحظه
+            شمرده می‌شود. با پایان زمان، پاسخ‌ها خودکار ثبت می‌شوند.
+            {test.max_attempts != null &&
+              ` این آزمون حداکثر ${test.max_attempts.toLocaleString("fa-IR")} بار قابل شرکت است.`}
+          </p>
           <button
             type="button"
-            onClick={() => void startTest(true)}
-            className="ghost-button rounded-xl px-4 py-2 text-sm"
+            disabled={starting}
+            onClick={() => void startTest()}
+            className="brand-button mt-4 min-h-12 rounded-xl px-6 py-3 text-sm"
           >
-            تلاش دوباره
+            {starting
+              ? "در حال شروع آزمون..."
+              : canRestart
+                ? "شروع دوباره آزمون"
+                : "شروع آزمون"}
           </button>
         </div>
       )}
-      {timedOut && !submission && (
+      {startError && (
+        <div className="feedback-error mb-5 rounded-2xl p-4" role="alert">
+          {startError}
+        </div>
+      )}
+      {timedOut && running && (
         <div
           className="feedback-warning mb-5 rounded-2xl p-4 text-sm"
           role="status"
@@ -294,29 +400,43 @@ export default function TestDetailPage({ id }: { id: number }) {
         </div>
       )}
 
-      <PracticeTestMedia media={test.media} />
-
-      <div className="space-y-4">
-        {questions.map((question, index) => (
-          <TestQuestionCard
-            key={question.id}
-            question={question}
-            index={index}
-            answer={answers[question.id] ?? ""}
-            disabled={inputsDisabled}
-            result={resultsByQuestion.get(question.id)}
-            onAnswerChange={updateAnswer}
+      {running ? (
+        <PracticeTestMedia media={test.media} />
+      ) : (
+        canStart && (
+          <PracticeTestMedia
+            media={mediaAvailableBeforeStart(test.media)}
+            description="این فایل‌ها پیش از شروع آزمون قابل پخش هستند."
           />
-        ))}
-      </div>
-      {!questions.length && (
-        <div className="surface-card rounded-2xl p-10 text-center text-muted-foreground">
-          سؤالی برای این آزمون ثبت نشده است.
-        </div>
+        )
       )}
 
-      {questions.length > 0 && (
-        <div className="surface-card sticky bottom-4 mt-5 rounded-2xl p-4 shadow-[var(--shadow-brand-md)] sm:flex sm:items-center sm:justify-between sm:gap-4">
+      {(running || submission) && (
+        <>
+          <div className="space-y-4">
+            {questions.map((question, index) => (
+              <TestQuestionCard
+                key={question.id}
+                question={question}
+                index={index}
+                answer={answers[question.id] ?? ""}
+                disabled={inputsDisabled}
+                result={resultsByQuestion.get(question.id)}
+                onAnswerChange={updateAnswer}
+              />
+            ))}
+          </div>
+          {!questions.length && (
+            <div className="surface-card rounded-2xl p-10 text-center text-muted-foreground">
+              سؤالی برای این آزمون ثبت نشده است.
+            </div>
+          )}
+        </>
+      )}
+
+      {questions.length > 0 && (running || submission) && (
+        // On phones it rides above the fixed bottom menu instead of under it.
+        <div className="surface-card sticky bottom-24 mt-5 rounded-2xl p-4 shadow-[var(--shadow-brand-md)] sm:bottom-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
           <div>
             <p className="font-bold">
               {answeredCount.toLocaleString("fa-IR")} از{" "}
@@ -329,9 +449,7 @@ export default function TestDetailPage({ id }: { id: number }) {
           <button
             type="button"
             disabled={
-              submitting ||
-              Boolean(submission) ||
-              (!timedOut && (!started || !allAnswered))
+              submitting || !running || (!timedOut && !allAnswered)
             }
             onClick={() => void submitTest(timedOut)}
             className="brand-button mt-4 min-h-12 w-full rounded-xl px-6 py-3 text-sm sm:mt-0 sm:w-auto"
@@ -369,6 +487,11 @@ export default function TestDetailPage({ id }: { id: number }) {
             )}
             {recommendedLevel && <p>سطح پیشنهادی: {recommendedLevel}</p>}
           </div>
+          {submission.grading_status === "pending" && (
+            <p className="mt-2 text-sm">
+              برخی پاسخ‌ها در انتظار تصحیح مدرس هستند.
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href={studentExamResultPath(id)}

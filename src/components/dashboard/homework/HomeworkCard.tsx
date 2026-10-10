@@ -1,7 +1,7 @@
 import { memo } from "react";
 import Link from "next/link";
 import StatusBadge, { toneTextClasses } from "@/components/ui/StatusBadge";
-import { formatPersianDate } from "@/lib/date";
+import { formatPersianDate, formatPersianDateTime } from "@/lib/date";
 import { formatDecimal } from "@/lib/format";
 import type { Homework } from "@/lib/homeworkApi";
 import {
@@ -15,6 +15,7 @@ import {
 import { studentHomeworkDetailPath } from "@/lib/routes";
 
 const actionLabels: Record<HomeworkDisplayStatus, string> = {
+  "not-started": "مشاهده جزئیات",
   open: "مشاهده و ارسال پاسخ",
   "late-open": "مشاهده و ارسال پاسخ",
   closed: "مشاهده جزئیات",
@@ -35,9 +36,14 @@ function HomeworkCard({ homework, referenceTime, courseTitle }: HomeworkCardProp
   const status = resolveHomeworkStatus(homework);
   const submission = homework.my_submission;
   const graded = submission?.status === "graded";
-  // Once an answer is in, the countdown no longer matters.
-  const due = submission ? null : describeDueDate(homework.due_at, referenceTime);
-  const context = [courseTitle, homework.lesson_title].filter(Boolean).join(" · ");
+  const notStarted = status === "not-started";
+  // Once an answer is in, or before submissions open, the countdown does not matter.
+  const due = submission || notStarted
+    ? null
+    : describeDueDate(homework.due_at, referenceTime);
+  const context = [homework.course_title || courseTitle, homework.lesson_title]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <article className="surface-card flex h-full flex-col rounded-2xl p-5">
@@ -78,7 +84,7 @@ function HomeworkCard({ homework, referenceTime, courseTitle }: HomeworkCardProp
           </dt>
           <dd className={`mt-1 font-bold ${graded ? "text-success" : ""}`}>
             {graded
-              ? `${formatDecimal(submission.score)} از ${formatDecimal(submission.max_score)}`
+              ? `${formatDecimal(submission.score)} از ${formatDecimal(homework.max_score)}`
               : formatDecimal(homework.max_score)}
           </dd>
         </div>
@@ -87,6 +93,11 @@ function HomeworkCard({ homework, referenceTime, courseTitle }: HomeworkCardProp
       {due && (
         <p className={`mt-3 text-xs font-bold ${toneTextClasses[due.tone]}`}>
           {due.text}
+        </p>
+      )}
+      {notStarted && homework.starts_at && (
+        <p className="mt-3 text-xs font-bold text-muted-foreground">
+          شروع ارسال: {formatPersianDateTime(homework.starts_at)}
         </p>
       )}
       {submission && (

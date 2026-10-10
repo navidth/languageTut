@@ -10,6 +10,15 @@ export function normalizePracticeTestMedia(
   });
 }
 
+/** Exam media streams return 403 before an attempt starts, except these. */
+export function mediaAvailableBeforeStart(
+  mediaItems: PracticeTestMediaValue[] | undefined,
+) {
+  return (mediaItems ?? []).filter(
+    (media) => typeof media !== "string" && media.available_before_start === true,
+  );
+}
+
 export default function PracticeTestMedia({
   media,
   title = "رسانه‌های آزمون",

@@ -182,8 +182,8 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
               <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold">{formatCourseType(course.course_type)}</span>
               {course.is_recommended && <span className="rounded-full border border-brand-accent/30 bg-brand-accent/10 px-3 py-1 text-xs font-bold text-brand-accent">پیشنهادی</span>}
             </div>
-            <h1 className="mt-6 text-3xl font-black leading-tight md:text-5xl">{course.title}</h1>
-            <p className="mt-5 max-w-3xl leading-8 text-white/70">{course.description || "برای این دوره توضیحی ثبت نشده است."}</p>
+            <h1 className="bidi-text mt-6 text-3xl font-black leading-tight md:text-5xl">{course.title}</h1>
+            <p className="bidi-text mt-5 max-w-3xl leading-8 text-white/70">{course.description || "برای این دوره توضیحی ثبت نشده است."}</p>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm">
@@ -215,7 +215,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
         className="mt-8"
       />
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-3">
+      <section className="mt-8 grid grid-cols-3 gap-2 sm:gap-4">
         <Info icon={<HiAcademicCap />} label="تعداد درس‌ها" value={course.lessons_count.toLocaleString("fa-IR")} />
         <Info icon={<HiCollection />} label="تعداد منابع" value={course.resources_count.toLocaleString("fa-IR")} />
         <Info icon={<HiCheckCircle />} label="پیشرفت دوره" value={`${progressValue.toLocaleString("fa-IR")}٪`} />
@@ -229,7 +229,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
       )}
 
       <section className="mt-10 scroll-mt-24" aria-labelledby="course-lessons-title">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div><h2 id="course-lessons-title" className="text-2xl font-black">درس‌های دوره</h2><p className="mt-2 text-sm text-muted-foreground">شروع دوره از یکی از درس‌های زیر انجام می‌شود.</p></div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {course.has_access && <Link href={studentHomeworkPath({ course: course.id })} className="ghost-button rounded-full px-4 py-1.5 text-sm">تکالیف این دوره</Link>}
@@ -283,7 +283,7 @@ function LessonCard({ lesson, busy, active, feedback, action, toggle }: {
   return (
     <li id={`lesson-${lesson.id}`} className={`surface-card scroll-mt-24 overflow-hidden rounded-3xl p-6 transition ${active ? "ring-2 ring-brand-accent/40" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><span className="rounded-full bg-secondary-soft px-3 py-1 text-xs font-bold text-brand-secondary dark:text-white">{formatSkillName(lesson.skill_detail.name)}</span><h3 className="mt-4 text-xl font-black">{lesson.title}</h3></div>
+        <div><span className="rounded-full bg-secondary-soft px-3 py-1 text-xs font-bold text-brand-secondary dark:text-white">{formatSkillName(lesson.skill_detail.name)}</span><h3 className="bidi-text mt-4 text-xl font-black">{lesson.title}</h3></div>
         <span className="text-sm text-muted-foreground">درس {lesson.order.toLocaleString("fa-IR")}</span>
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
@@ -295,7 +295,7 @@ function LessonCard({ lesson, busy, active, feedback, action, toggle }: {
       {feedback && <p className={`${feedback.type === "success" ? "feedback-success" : "feedback-error"} mt-4 rounded-xl p-3 text-sm`} role={feedback.type === "error" ? "alert" : "status"}>{feedback.text}</p>}
       {active && (
         <div className="mt-6 border-t border-border pt-6">
-          <div className="whitespace-pre-line leading-8 text-muted-foreground">{lesson.content}</div>
+          <div className="bidi-text whitespace-pre-line leading-8 text-muted-foreground">{lesson.content}</div>
           {media.length > 0 && <MediaGallery media={media} title="رسانه‌های درس" compact={media.length === 1} className="mt-5" />}
           {lesson.attachment_url && <a href={lesson.attachment_url} target="_blank" rel="noopener noreferrer" className="brand-link mt-5 inline-block text-sm">دانلود پیوست درس</a>}
         </div>
@@ -305,5 +305,6 @@ function LessonCard({ lesson, busy, active, feedback, action, toggle }: {
 }
 
 function Info({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="surface-card flex items-center gap-3 rounded-2xl p-5"><span className="grid size-11 place-items-center rounded-xl bg-accent-soft text-xl text-brand-accent">{icon}</span><div><p className="text-xs text-muted-foreground">{label}</p><strong className="mt-1 block">{value}</strong></div></div>;
+  // Three across on phones too, with the icon above the text there.
+  return <div className="surface-card flex flex-col items-start gap-2 rounded-2xl p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-5"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-xl text-brand-accent">{icon}</span><div className="min-w-0"><p className="text-xs text-muted-foreground">{label}</p><strong className="mt-1 block">{value}</strong></div></div>;
 }

@@ -24,7 +24,8 @@ export default function MobileMenu({
                   `}
             >
                   <div className="flex items-center justify-between p-6">
-                        <BrandMark variant="wordmark" className="cursor-pointer" />
+                        <BrandMark variant="wordmark" className="cursor-pointer dark:hidden" />
+                        <BrandMark variant="wordmark" inverse className="hidden cursor-pointer dark:inline-flex" />
                         <button type="button" onClick={onClose} aria-label="بستن منوی اصلی" className="rounded-xl p-2 text-foreground hover:bg-accent-soft">
                               <HiX size={26} />
                         </button>

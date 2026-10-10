@@ -6,15 +6,18 @@ import {
   buildHomework,
   buildHomeworkSubmission,
   buildPage,
+  buildSubmissionSummary,
 } from "@/test/fixtures";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
 import HomeworkDetailPage from "./HomeworkDetailPage";
 
 const homeworkMocks = vi.hoisted(() => ({
   get: vi.fn(),
+  getSubmission: vi.fn(),
   submit: vi.fn(),
   deleteSubmission: vi.fn(),
   downloadSubmission: vi.fn(),
+  downloadAttachment: vi.fn(),
 }));
 const studentMocks = vi.hoisted(() => ({
   progress: vi.fn(),
@@ -77,9 +80,78 @@ describe("HomeworkDetailPage", () => {
       screen.getByText("Upload a single PDF covering everything in this course."),
     ).toBeInTheDocument();
     expect(screen.getByText("پذیرفته می‌شود")).toBeInTheDocument();
+    // `course_title` names the course, so no enrollment request is made.
     expect(
-      await screen.findByRole("link", { name: "PT IELTS Course 1" }),
+      screen.getByRole("link", { name: "General English A1" }),
     ).toHaveAttribute("href", "/student/all-courses/15");
+    expect(studentMocks.enrollments).not.toHaveBeenCalled();
+  });
+
+  it("lists the teacher's attachments and downloads one with the token", async () => {
+    const user = userEvent.setup();
+    const blob = new Blob(["worksheet"]);
+    homeworkMocks.get.mockResolvedValue(buildHomework({
+      attachments: [{
+        id: 31,
+        homework: 1,
+        title: "Worksheet",
+        file_name: "worksheet.pdf",
+        file_size: 2048,
+        download_url: "http://api.test/api/homework-attachments/31/download/",
+        created_at: "2026-09-05T06:00:00Z",
+      }],
+    }));
+    homeworkMocks.downloadAttachment.mockResolvedValue({ blob, fileName: null });
+    renderDetail();
+
+    expect(await screen.findByRole("heading", { name: "فایل‌های پیوست" })).toBeInTheDocument();
+    expect(screen.getByText("worksheet.pdf · ۲ کیلوبایت")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "دانلود Worksheet" }));
+
+    await waitFor(() => expect(fileMocks.saveBlob).toHaveBeenCalledWith(blob, "worksheet.pdf"));
+    expect(homeworkMocks.downloadAttachment).toHaveBeenCalledWith(31);
+  });
+
+  it("hides attachment downloads from visitors who are not signed in", async () => {
+    homeworkMocks.get.mockResolvedValue(buildHomework({
+      attachments: [{
+        id: 31,
+        homework: 1,
+        title: "Worksheet",
+        file_name: "worksheet.pdf",
+        file_size: 2048,
+        download_url: "http://api.test/api/homework-attachments/31/download/",
+        created_at: "2026-09-05T06:00:00Z",
+      }],
+    }));
+    renderDetail(1, false);
+
+    expect(await screen.findByText("برای دانلود فایل‌های پیوست، وارد حساب کاربری خود شوید.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "دانلود Worksheet" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the form closed until submissions open", async () => {
+    homeworkMocks.get.mockResolvedValue(buildHomework({
+      starts_at: "2026-12-01T08:00:00Z",
+      has_started: false,
+    }));
+    renderDetail();
+
+    expect(await screen.findByText("هنوز شروع نشده")).toBeInTheDocument();
+    expect(screen.getByText("شروع ارسال")).toBeInTheDocument();
+    expect(screen.getAllByText(/ارسال پاسخ از .+ امکان‌پذیر است\./)).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "ارسال تکلیف" })).not.toBeInTheDocument();
+    expect(homeworkMocks.submit).not.toHaveBeenCalled();
+  });
+
+  it("uses a full embedded submission without requesting it again", async () => {
+    homeworkMocks.get.mockResolvedValue(buildHomework({
+      my_submission: buildHomeworkSubmission({ file_name: "embedded.pdf" }),
+    }));
+    renderDetail();
+
+    expect(await screen.findByText("embedded.pdf")).toBeInTheDocument();
+    expect(homeworkMocks.getSubmission).not.toHaveBeenCalled();
   });
 
   it("uploads an answer and reflects it without refetching", async () => {
@@ -118,6 +190,70 @@ describe("HomeworkDetailPage", () => {
     ).toBeInTheDocument();
     expect(homeworkMocks.submit).toHaveBeenCalledOnce();
     expect(homeworkMocks.get).toHaveBeenCalledOnce();
+    // The upload response is the full record, so nothing is refetched.
+    expect(homeworkMocks.getSubmission).not.toHaveBeenCalled();
+  });
+
+  it("loads the file, notes and edit time that the homework summary leaves out", async () => {
+    homeworkMocks.get.mockResolvedValue(
+      buildHomework({ my_submission: buildSubmissionSummary() }),
+    );
+    homeworkMocks.getSubmission.mockResolvedValue(
+      buildHomeworkSubmission({
+        file_name: "essay-v2.pdf",
+        notes: "Second draft",
+        updated_at: "2026-09-11T09:00:00Z",
+      }),
+    );
+    renderDetail();
+
+    expect(await screen.findByText("essay-v2.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Second draft")).toBeInTheDocument();
+    expect(screen.getByText(/آخرین به‌روزرسانی:/)).toBeInTheDocument();
+    expect(screen.queryByText("فایل ارسال‌شده")).not.toBeInTheDocument();
+    expect(homeworkMocks.getSubmission).toHaveBeenCalledExactlyOnceWith(9);
+  });
+
+  it("offers a retry when the submission details fail to load", async () => {
+    const user = userEvent.setup();
+    homeworkMocks.get.mockResolvedValue(
+      buildHomework({ my_submission: buildSubmissionSummary() }),
+    );
+    homeworkMocks.getSubmission
+      .mockRejectedValueOnce(
+        new ApiError({ message: "خطایی در سرور رخ داد.", kind: "server", status: 500 }),
+      )
+      .mockResolvedValue(buildHomeworkSubmission());
+    renderDetail();
+
+    expect(await screen.findByText("خطایی در سرور رخ داد.")).toBeInTheDocument();
+    // Replacing and deleting only need the submission id, so they stay usable.
+    expect(
+      screen.getByRole("button", { name: "جایگزینی فایل ارسال‌شده" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "تلاش دوباره" }));
+
+    expect(await screen.findByText("essay.pdf")).toBeInTheDocument();
+    expect(homeworkMocks.getSubmission).toHaveBeenCalledTimes(2);
+  });
+
+  it("refetches a cached submission that the homework reports as graded", async () => {
+    const graded = buildHomeworkSubmission({
+      status: "graded",
+      score: "18.00",
+      percentage: "90.00",
+      feedback: "Well structured essay.",
+    });
+    homeworkMocks.get.mockResolvedValue(
+      buildHomework({ my_submission: buildSubmissionSummary(graded) }),
+    );
+    homeworkMocks.getSubmission
+      .mockResolvedValueOnce(buildHomeworkSubmission())
+      .mockResolvedValue(graded);
+    renderDetail();
+
+    expect(await screen.findByText("Well structured essay.")).toBeInTheDocument();
+    expect(homeworkMocks.getSubmission).toHaveBeenCalledTimes(2);
   });
 
   it("requires a file before submitting", async () => {
@@ -137,8 +273,11 @@ describe("HomeworkDetailPage", () => {
     const user = userEvent.setup();
     homeworkMocks.get.mockResolvedValue(
       buildHomework({
-        my_submission: buildHomeworkSubmission({ notes: "First draft" }),
+        my_submission: buildSubmissionSummary(),
       }),
+    );
+    homeworkMocks.getSubmission.mockResolvedValue(
+      buildHomeworkSubmission({ notes: "First draft" }),
     );
     homeworkMocks.submit.mockResolvedValue(
       buildHomeworkSubmission({
@@ -223,23 +362,23 @@ describe("HomeworkDetailPage", () => {
   });
 
   it("shows the grade and feedback and locks a graded submission", async () => {
+    const graded = buildHomeworkSubmission({
+      status: "graded",
+      score: "18.00",
+      percentage: "90.00",
+      feedback: "Well structured essay.",
+      graded_by: 3,
+      graded_by_name: "Ms. Karimi",
+      graded_at: "2026-09-11T10:00:00Z",
+    });
     homeworkMocks.get.mockResolvedValue(
-      buildHomework({
-        my_submission: buildHomeworkSubmission({
-          status: "graded",
-          score: "18.00",
-          percentage: "90.00",
-          feedback: "Well structured essay.",
-          graded_by: 3,
-          graded_by_name: "Ms. Karimi",
-          graded_at: "2026-09-11T10:00:00Z",
-        }),
-      }),
+      buildHomework({ my_submission: buildSubmissionSummary(graded) }),
     );
+    homeworkMocks.getSubmission.mockResolvedValue(graded);
     renderDetail();
 
     expect(await screen.findByText("نمره‌دهی شده")).toBeInTheDocument();
-    expect(screen.getByText("۱۸")).toBeInTheDocument();
+    expect(await screen.findByText("۱۸")).toBeInTheDocument();
     expect(screen.getByText("۹۰٪")).toBeInTheDocument();
     expect(screen.getByText("Well structured essay.")).toBeInTheDocument();
     expect(screen.getByText(/نمره‌دهی توسط Ms\. Karimi/)).toBeInTheDocument();
@@ -255,8 +394,9 @@ describe("HomeworkDetailPage", () => {
   it("deletes an ungraded submission only after confirmation", async () => {
     const user = userEvent.setup();
     homeworkMocks.get.mockResolvedValue(
-      buildHomework({ my_submission: buildHomeworkSubmission() }),
+      buildHomework({ my_submission: buildSubmissionSummary() }),
     );
+    homeworkMocks.getSubmission.mockResolvedValue(buildHomeworkSubmission());
     homeworkMocks.deleteSubmission.mockResolvedValue(undefined);
     renderDetail();
 
@@ -279,8 +419,9 @@ describe("HomeworkDetailPage", () => {
     const user = userEvent.setup();
     const blob = new Blob(["my answer"]);
     homeworkMocks.get.mockResolvedValue(
-      buildHomework({ my_submission: buildHomeworkSubmission() }),
+      buildHomework({ my_submission: buildSubmissionSummary() }),
     );
+    homeworkMocks.getSubmission.mockResolvedValue(buildHomeworkSubmission());
     homeworkMocks.downloadSubmission.mockResolvedValue({ blob, fileName: null });
     renderDetail();
 

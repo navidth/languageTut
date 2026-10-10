@@ -5,16 +5,21 @@ import localFont from "next/font/local";
 import StoreProvider from "@/store/StoreProvider";
 import AuthFlowProvider from "@/components/auth/AuthFlowProvider";
 
+// WOFF2 copy of IRANSans(FaNum).ttf with every glyph kept, at less than half
+// the size.
 const iranSans = localFont({
-  src: "../../public/fonts/IRANSans(FaNum).ttf",
+  src: "../../public/fonts/IRANSans-FaNum.woff2",
   variable: "--font-iran-sans",
   display: "swap",
 });
 
+// Latin-only subset of AbyssinicaSIL-Regular.ttf; it only renders short
+// `lang="en"` labels, so it loads on demand instead of on every page.
 const abyssinicaSil = localFont({
-  src: "../../public/fonts/AbyssinicaSIL-Regular.ttf",
+  src: "../../public/fonts/AbyssinicaSIL-Latin.woff2",
   variable: "--font-abyssinica-sil",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {

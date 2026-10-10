@@ -1,4 +1,9 @@
-import type { Homework, HomeworkSubmission } from "@/lib/homeworkApi";
+import {
+  toSubmissionSummary,
+  type Homework,
+  type HomeworkSubmission,
+  type HomeworkSubmissionSummary,
+} from "@/lib/homeworkApi";
 import type {
   ExamSubmission,
   Paginated,
@@ -47,24 +52,45 @@ export function buildHomeworkSubmission(
   };
 }
 
+/** `my_submission` as the homework endpoints embed it. */
+export function buildSubmissionSummary(
+  overrides: Partial<HomeworkSubmission> = {},
+): HomeworkSubmissionSummary {
+  return toSubmissionSummary(buildHomeworkSubmission(overrides));
+}
+
 export function buildHomework(overrides: Partial<Homework> = {}): Homework {
-  return {
+  const base = {
     id: 1,
     course: 15,
+    course_title: "General English A1",
     lesson: null,
     lesson_title: null,
-    scope: "course",
+    scope: "course" as const,
     title: "Final assignment",
     instructions: "Upload a single PDF covering everything in this course.",
+    attachments: [],
+    starts_at: null,
     due_at: "2026-10-05T06:00:00Z",
     max_score: "20.00",
     allow_late_submissions: true,
     is_published: true,
+    has_started: true,
     is_past_due: false,
+    created_by: 3,
+    created_by_name: "Teacher",
     my_submission: null,
     created_at: "2026-09-05T06:00:00Z",
     updated_at: "2026-09-05T06:00:00Z",
     ...overrides,
+  };
+  return {
+    // Derived like the server does, unless a test sets it.
+    is_open:
+      base.is_published &&
+      base.has_started &&
+      (!base.is_past_due || base.allow_late_submissions),
+    ...base,
   };
 }
 

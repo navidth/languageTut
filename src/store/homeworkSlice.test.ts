@@ -10,6 +10,7 @@ import { logout } from "./authSlice";
 import homeworkReducer, {
   fetchHomework,
   fetchHomeworkList,
+  fetchHomeworkSubmission,
   homeworkListKey,
   homeworkSubmissionRemoved,
   homeworkSubmissionSaved,
@@ -18,6 +19,7 @@ import homeworkReducer, {
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   get: vi.fn(),
+  getSubmission: vi.fn(),
 }));
 
 vi.mock("@/lib/homeworkApi", async (importOriginal) => ({
@@ -36,6 +38,7 @@ describe("homework cache", () => {
       buildPage([buildHomework({ id: 1 }), buildHomework({ id: 2 })]),
     );
     mocks.get.mockResolvedValue(buildHomework({ id: 3 }));
+    mocks.getSubmission.mockResolvedValue(buildHomeworkSubmission({ id: 9 }));
   });
 
   it("reuses a fresh list page and opens its items without a request", async () => {
@@ -86,23 +89,43 @@ describe("homework cache", () => {
     const key = homeworkListKey({ page: 1 });
     await store.dispatch(fetchHomeworkList({ page: 1 })).unwrap();
 
-    store.dispatch(
-      homeworkSubmissionSaved({
-        homeworkId: 1,
-        submission: buildHomeworkSubmission({ id: 9 }),
-      }),
-    );
+    const saved = buildHomeworkSubmission({ id: 9, notes: "Draft" });
+    store.dispatch(homeworkSubmissionSaved({ homeworkId: 1, submission: saved }));
 
     let state = store.getState().homework;
-    expect(state.lists[key].data?.results[0].my_submission?.id).toBe(9);
-    expect(state.details[1].data?.my_submission?.id).toBe(9);
+    const summary = {
+      id: 9,
+      status: "submitted",
+      score: null,
+      is_late: false,
+      submitted_at: saved.submitted_at,
+    };
+    // The homework copies hold the same summary the API embeds.
+    expect(state.lists[key].data?.results[0].my_submission).toEqual(summary);
+    expect(state.details[1].data?.my_submission).toEqual(summary);
     expect(state.details[2].data?.my_submission).toBeNull();
+    expect(state.submissions[9].data).toEqual(saved);
 
-    store.dispatch(homeworkSubmissionRemoved({ homeworkId: 1 }));
+    store.dispatch(homeworkSubmissionRemoved({ homeworkId: 1, submissionId: 9 }));
 
     state = store.getState().homework;
     expect(state.lists[key].data?.results[0].my_submission).toBeNull();
     expect(state.details[1].data?.my_submission).toBeNull();
+    expect(state.submissions[9]).toBeUndefined();
+  });
+
+  it("caches the full submission record and honours a forced refresh", async () => {
+    const store = createStore();
+
+    await store.dispatch(fetchHomeworkSubmission({ id: 9 })).unwrap();
+    await store.dispatch(fetchHomeworkSubmission({ id: 9 }));
+    expect(mocks.getSubmission).toHaveBeenCalledOnce();
+
+    await store.dispatch(fetchHomeworkSubmission({ id: 9, force: true })).unwrap();
+    expect(mocks.getSubmission).toHaveBeenCalledTimes(2);
+    expect(store.getState().homework.submissions[9].data?.file_name).toBe(
+      "essay.pdf",
+    );
   });
 
   it("refreshes the copy held in list pages when a homework is reloaded", async () => {
@@ -140,6 +163,10 @@ describe("homework cache", () => {
 
     store.dispatch(logout());
 
-    expect(store.getState().homework).toEqual({ lists: {}, details: {} });
+    expect(store.getState().homework).toEqual({
+      lists: {},
+      details: {},
+      submissions: {},
+    });
   });
 });

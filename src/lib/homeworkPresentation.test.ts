@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHomework, buildHomeworkSubmission } from "@/test/fixtures";
+import { buildHomework, buildSubmissionSummary } from "@/test/fixtures";
 import {
   canDeleteHomeworkSubmission,
   canSubmitHomework,
@@ -11,18 +11,19 @@ import {
 describe("resolveHomeworkStatus", () => {
   it.each([
     ["open", {}],
+    ["not-started", { has_started: false, starts_at: "2026-12-01T08:00:00Z" }],
     ["late-open", { is_past_due: true, allow_late_submissions: true }],
     ["closed", { is_past_due: true, allow_late_submissions: false }],
     ["unpublished", { is_published: false }],
-    ["submitted", { my_submission: buildHomeworkSubmission() }],
+    ["submitted", { my_submission: buildSubmissionSummary() }],
     [
       "submitted-late",
-      { my_submission: buildHomeworkSubmission({ is_late: true }) },
+      { my_submission: buildSubmissionSummary({ is_late: true }) },
     ],
     [
       "graded",
       {
-        my_submission: buildHomeworkSubmission({
+        my_submission: buildSubmissionSummary({
           status: "graded",
           score: "18.00",
         }),
@@ -36,7 +37,7 @@ describe("resolveHomeworkStatus", () => {
     const homework = buildHomework({
       is_past_due: true,
       allow_late_submissions: false,
-      my_submission: buildHomeworkSubmission(),
+      my_submission: buildSubmissionSummary(),
     });
 
     expect(resolveHomeworkStatus(homework)).toBe("submitted");
@@ -44,11 +45,19 @@ describe("resolveHomeworkStatus", () => {
 });
 
 describe("homework submission permissions", () => {
+  it("follows the server is_open flag, including a start time still ahead", () => {
+    expect(canSubmitHomework(buildHomework({ has_started: false }))).toBe(false);
+    // The server has the final say even when the other flags look open.
+    expect(canSubmitHomework(buildHomework({ is_open: false }))).toBe(false);
+    expect(canSubmitHomework(buildHomework({ is_open: true }))).toBe(true);
+  });
+
+
   it("allows a first upload and a replacement while the window is open", () => {
     expect(canSubmitHomework(buildHomework())).toBe(true);
     expect(
       canSubmitHomework(
-        buildHomework({ my_submission: buildHomeworkSubmission() }),
+        buildHomework({ my_submission: buildSubmissionSummary() }),
       ),
     ).toBe(true);
   });
@@ -68,7 +77,7 @@ describe("homework submission permissions", () => {
 
   it("locks a graded submission against replacement and deletion", () => {
     const graded = buildHomework({
-      my_submission: buildHomeworkSubmission({ status: "graded" }),
+      my_submission: buildSubmissionSummary({ status: "graded" }),
     });
 
     expect(canSubmitHomework(graded)).toBe(false);
@@ -79,7 +88,7 @@ describe("homework submission permissions", () => {
     expect(canDeleteHomeworkSubmission(buildHomework())).toBe(false);
     expect(
       canDeleteHomeworkSubmission(
-        buildHomework({ my_submission: buildHomeworkSubmission() }),
+        buildHomework({ my_submission: buildSubmissionSummary() }),
       ),
     ).toBe(true);
   });

@@ -31,8 +31,8 @@ export default function CourseGrid({
                 )}
               </div>
 
-              <h2 className="text-xl font-black leading-8 text-foreground">{course.title}</h2>
-              <p className="mt-3 line-clamp-3 grow text-sm leading-7 text-muted-foreground">
+              <h2 className="bidi-text text-xl font-black leading-8 text-foreground">{course.title}</h2>
+              <p className="bidi-text mt-3 line-clamp-3 grow text-sm leading-7 text-muted-foreground">
                 {course.description || "برای این دوره هنوز توضیحی ثبت نشده است."}
               </p>
 

@@ -73,7 +73,10 @@ export default function ExamResultPage({ id }: { id: number }) {
   const hasUnfinishedAttempt = useMemo(
     () =>
       submissions.items.some(
-        (item) => item.practice_test === id && item.submitted_at === null,
+        (item) =>
+          item.practice_test === id &&
+          item.submitted_at === null &&
+          item.grading_status !== "expired",
       ),
     [id, submissions.items],
   );

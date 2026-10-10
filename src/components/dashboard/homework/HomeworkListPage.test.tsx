@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/apiErrors";
 import {
   buildHomework,
-  buildHomeworkSubmission,
+  buildSubmissionSummary,
   buildPage,
 } from "@/test/fixtures";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
@@ -28,7 +28,7 @@ const gradedHomework = buildHomework({
   lesson_title: "PT Listening Lesson 1",
   scope: "lesson",
   title: "Written exercise",
-  my_submission: buildHomeworkSubmission({
+  my_submission: buildSubmissionSummary({
     id: 12,
     homework: 2,
     status: "graded",
@@ -73,8 +73,9 @@ describe("HomeworkListPage", () => {
     expect(
       screen.getByRole("link", { name: "مشاهده نمره و بازخورد" }),
     ).toHaveAttribute("href", "/student/homework/2");
+    // The course name comes from the homework itself.
     expect(
-      await screen.findByText("PT IELTS Course 1 · PT Listening Lesson 1"),
+      await screen.findByText("General English A1 · PT Listening Lesson 1"),
     ).toBeInTheDocument();
     expect(homeworkMocks.list).toHaveBeenCalledOnce();
     expect(homeworkMocks.list).toHaveBeenCalledWith({

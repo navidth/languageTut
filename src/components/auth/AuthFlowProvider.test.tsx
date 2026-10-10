@@ -1,13 +1,14 @@
-import { act, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "@/lib/auth";
 import type { AuthenticationMode } from "@/lib/authFlow";
 import { PLACEMENT_SECTION_ID } from "@/lib/routes";
-import AuthFlowProvider from "./AuthFlowProvider";
+import AuthFlowProvider, { useAuthFlow } from "./AuthFlowProvider";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   dispatch: vi.fn(),
+  modalOpen: null as null | boolean,
   modalOnAuthenticated: null as null | ((user: User, mode: AuthenticationMode) => void),
 }));
 
@@ -24,18 +25,31 @@ vi.mock("@/store/hooks", () => ({
 
 vi.mock("@/store/authSlice", () => ({
   loadMe: vi.fn(() => ({ type: "auth/me" })),
+  fetchAuthFeatures: vi.fn(() => ({ type: "auth/features" })),
 }));
 
 vi.mock("./AuthenticationModal", () => ({
   default: ({
+    open,
     onAuthenticated,
   }: {
+    open: boolean;
     onAuthenticated: (user: User, mode: AuthenticationMode) => void;
   }) => {
+    mocks.modalOpen = open;
     mocks.modalOnAuthenticated = onAuthenticated;
     return null;
   },
 }));
+
+function SignInButton() {
+  const { startAuthFlow } = useAuthFlow();
+  return (
+    <button type="button" onClick={() => void startAuthFlow()}>
+      ورود
+    </button>
+  );
+}
 
 const newlyRegisteredStudent: User = {
   id: 24,
@@ -49,6 +63,8 @@ const newlyRegisteredStudent: User = {
 describe("AuthFlowProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    mocks.modalOpen = null;
     mocks.modalOnAuthenticated = null;
     window.matchMedia = vi.fn().mockReturnValue({ matches: true });
     window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
@@ -57,9 +73,23 @@ describe("AuthFlowProvider", () => {
     });
   });
 
+  it("loads the authentication modal only once someone starts signing in", async () => {
+    render(
+      <AuthFlowProvider>
+        <SignInButton />
+      </AuthFlowProvider>,
+    );
+
+    expect(mocks.modalOpen).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "ورود" }));
+
+    await waitFor(() => expect(mocks.modalOpen).toBe(true));
+  });
+
   it("scrolls a newly registered user to the placement section instead of the dashboard", async () => {
     render(
       <AuthFlowProvider>
+        <SignInButton />
         <section id={PLACEMENT_SECTION_ID} tabIndex={-1}>
           <h2>شما چه سطحی هستید؟</h2>
         </section>
@@ -71,7 +101,8 @@ describe("AuthFlowProvider", () => {
     const scrollIntoView = vi.fn();
     placementSection!.scrollIntoView = scrollIntoView;
 
-    expect(mocks.modalOnAuthenticated).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "ورود" }));
+    await waitFor(() => expect(mocks.modalOnAuthenticated).not.toBeNull());
     act(() => {
       mocks.modalOnAuthenticated?.(newlyRegisteredStudent, "signup");
     });

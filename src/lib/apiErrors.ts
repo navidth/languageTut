@@ -56,6 +56,10 @@ const fieldLabels: Record<string, string> = {
   password: "رمز عبور",
   full_name: "نام و نام خانوادگی",
   current_level: "سطح زبان",
+  current_password: "رمز عبور فعلی",
+  phone_number: "شماره موبایل",
+  new_password: "رمز عبور جدید",
+  code: "کد تأیید",
   refresh: "نشست کاربری",
   token: "نشست کاربری",
   file: "فایل",
@@ -104,11 +108,36 @@ function localizeKnownMessage(message: string): string | null {
   if (/[\u0600-\u06ff]/.test(message)) return message;
 
   const normalized = message.toLowerCase();
+  // Before the login rule below, which also matches "incorrect password".
+  if (/current password/.test(normalized) && /incorrect|wrong|invalid|does not match/.test(normalized)) {
+    return "رمز عبور فعلی درست نیست.";
+  }
+  if (/current password/.test(normalized) && /required|needed|enter|provide/.test(normalized)) {
+    return "برای تغییر ایمیل یا شماره موبایل، رمز عبور فعلی را وارد کنید.";
+  }
   if (/no active account|invalid credentials|incorrect (email|password)/.test(normalized)) {
     return "ایمیل یا رمز عبور صحیح نیست.";
   }
   if (/token.*(invalid|expired)|not valid for any token|authentication credentials were not provided/.test(normalized)) {
     return "نشست شما منقضی شده است. لطفاً دوباره وارد شوید.";
+  }
+  if (/invalid email or password/.test(normalized)) {
+    return "ایمیل یا رمز عبور صحیح نیست.";
+  }
+  if (/invalid phone number or password/.test(normalized)) {
+    return "شماره موبایل یا رمز عبور صحیح نیست.";
+  }
+  if (/provide either an email or a phone number/.test(normalized)) {
+    return "ایمیل یا شماره موبایل را وارد کنید.";
+  }
+  if (/iranian mobile number/.test(normalized)) {
+    return "شماره موبایل معتبر نیست. نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹";
+  }
+  if (/enroll in this course/.test(normalized)) {
+    return "برای شرکت در این آزمون، ابتدا دوره آن را تهیه کنید.";
+  }
+  if (/do not have permission to perform this action/.test(normalized)) {
+    return defaultStatusMessages[403];
   }
   if (/already exists|already registered|already in use|unique/.test(normalized)) {
     return "این اطلاعات قبلاً ثبت شده است.";
@@ -121,6 +150,9 @@ function localizeKnownMessage(message: string): string | null {
   }
   if (/file extension|extension .* not allowed/.test(normalized)) {
     return "نوع این فایل مجاز نیست.";
+  }
+  if (/not open yet|has not (started|opened)|not started yet|submissions open/.test(normalized)) {
+    return "ارسال پاسخ برای این تکلیف هنوز باز نشده است.";
   }
   if (/deadline|past due|late submission/.test(normalized)) {
     return "مهلت ارسال این تکلیف به پایان رسیده است.";
@@ -161,6 +193,9 @@ function firstUsefulServerMessage(data: unknown, status?: number): string | null
     const localized = localizeKnownMessage(message);
     if (localized) return localized;
     if (/[\u0600-\u06ff]/.test(message)) return message;
+    // Readable 403 reasons, such as an attempt limit or a placement retake
+    // date, would otherwise be hidden behind the generic message.
+    if (status === 403 && key === "detail") return message;
   }
 
   if (status === 400 || status === 422) {

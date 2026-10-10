@@ -1,6 +1,12 @@
 "use client";
 
-import { useId, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { HiDownload, HiPaperClip, HiTrash, HiUpload } from "react-icons/hi";
 import LoginPrompt from "@/components/auth/LoginPrompt";
 import { useSessionState } from "@/components/auth/useSessionState";
@@ -10,13 +16,19 @@ import type { ApiFieldErrors } from "@/lib/apiErrors";
 import { formatPersianDateTime } from "@/lib/date";
 import { formatFileSize } from "@/lib/files";
 import { formatDecimal } from "@/lib/format";
-import type { Homework, HomeworkSubmission } from "@/lib/homeworkApi";
+import type {
+  Homework,
+  HomeworkSubmission,
+  HomeworkSubmissionSummary,
+} from "@/lib/homeworkApi";
 import {
   canDeleteHomeworkSubmission,
   canSubmitHomework,
+  describeHomeworkStatus,
   isSubmissionWindowOpen,
 } from "@/lib/homeworkPresentation";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchHomeworkSubmission } from "@/store/homeworkSlice";
 import {
   useHomeworkSubmission,
   type SubmissionAction,
@@ -64,13 +76,50 @@ export default function HomeworkSubmissionPanel({
   );
 }
 
+/** Whether the full record still agrees with the summary on the homework. */
+function matchesSummary(
+  submission: HomeworkSubmission,
+  summary: HomeworkSubmissionSummary,
+) {
+  return (
+    submission.status === summary.status &&
+    submission.score === summary.score &&
+    submission.is_late === summary.is_late &&
+    submission.submitted_at === summary.submitted_at
+  );
+}
+
 function StudentSubmission({ homework }: { homework: Homework }) {
+  const dispatch = useAppDispatch();
+  const summary = homework.my_submission;
+  const submissionId = summary?.id ?? null;
+  const entry = useAppSelector((state) =>
+    submissionId === null ? undefined : state.homework.submissions[submissionId],
+  );
+  const submission = entry?.data ?? null;
+  // A reloaded homework can be ahead of the cached record, e.g. after grading.
+  const outdated = Boolean(
+    summary && submission && !matchesSummary(submission, summary),
+  );
   const { busy, progress, feedback, fieldErrors, submit, remove, download } =
-    useHomeworkSubmission(homework);
-  const submission = homework.my_submission;
+    useHomeworkSubmission(homework, submission);
   const windowOpen = isSubmissionWindowOpen(homework);
   const canSubmit = canSubmitHomework(homework);
   const canDelete = canDeleteHomeworkSubmission(homework);
+  const detailsFailed = Boolean(summary && !submission && entry?.status === "failed");
+  const loadingDetails = Boolean(summary && !submission && !detailsFailed);
+
+  useEffect(() => {
+    if (submissionId !== null) {
+      void dispatch(fetchHomeworkSubmission({ id: submissionId, force: outdated }));
+    }
+  }, [dispatch, outdated, submissionId]);
+
+  function reloadDetails() {
+    if (submissionId !== null) {
+      void dispatch(fetchHomeworkSubmission({ id: submissionId, force: true }));
+    }
+  }
 
   return (
     <div className="mt-5 space-y-5">
@@ -91,25 +140,52 @@ function StudentSubmission({ homework }: { homework: Homework }) {
           onDownload={download}
         />
       )}
+      {loadingDetails && (
+        <div role="status">
+          <span className="sr-only">در حال دریافت پاسخ ارسال‌شده...</span>
+          <Skeleton className="h-24 w-full rounded-2xl" />
+        </div>
+      )}
+      {detailsFailed && (
+        <div
+          className="feedback-error flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 text-sm"
+          role="alert"
+        >
+          <span>{entry?.error}</span>
+          <button
+            type="button"
+            onClick={reloadDetails}
+            className="ghost-button rounded-xl px-4 py-2 text-xs"
+          >
+            تلاش دوباره
+          </button>
+        </div>
+      )}
       {submission?.status === "graded" && <GradeSummary submission={submission} />}
 
-      {!submission && !canSubmit && (
-        <p className="feedback-error rounded-2xl p-4 text-sm" role="status">
-          {homework.is_published
-            ? "مهلت ارسال این تکلیف به پایان رسیده است و ارسال با تأخیر پذیرفته نمی‌شود."
-            : "این تکلیف هنوز منتشر نشده است."}
+      {!summary && !canSubmit && (
+        <p
+          className={`${homework.is_published && !homework.has_started ? "feedback-warning" : "feedback-error"} rounded-2xl p-4 text-sm`}
+          role="status"
+        >
+          {!homework.is_published
+            ? "این تکلیف هنوز منتشر نشده است."
+            : !homework.has_started
+              ? describeHomeworkStatus(homework)
+              : "مهلت ارسال این تکلیف به پایان رسیده است و ارسال با تأخیر پذیرفته نمی‌شود."}
         </p>
       )}
-      {submission && submission.status !== "graded" && !windowOpen && (
+      {summary && summary.status !== "graded" && !windowOpen && (
         <p className="feedback-warning rounded-2xl p-4 text-sm" role="status">
           مهلت این تکلیف به پایان رسیده است و امکان جایگزینی فایل وجود ندارد.
         </p>
       )}
 
-      {canSubmit && (
+      {canSubmit && !loadingDetails && (
         <SubmissionForm
-          key={submission ? `${submission.id}:${submission.updated_at}` : "new"}
-          existing={submission}
+          key={summary ? `${summary.id}:${submission?.updated_at ?? ""}` : "new"}
+          replacing={summary !== null}
+          initialNotes={submission?.notes ?? ""}
           late={homework.is_past_due}
           busy={busy}
           progress={progress}
@@ -117,7 +193,7 @@ function StudentSubmission({ homework }: { homework: Homework }) {
           onSubmit={submit}
         />
       )}
-      {canDelete && (
+      {canDelete && !loadingDetails && (
         <DeleteSubmission
           deleting={busy === "delete"}
           disabled={busy !== null}
@@ -234,24 +310,25 @@ function GradeSummary({ submission }: { submission: HomeworkSubmission }) {
 }
 
 function SubmissionForm({
-  existing,
+  replacing,
+  initialNotes,
   late,
   busy,
   progress,
   fieldErrors,
   onSubmit,
 }: {
-  existing: HomeworkSubmission | null;
+  replacing: boolean;
+  initialNotes: string;
   late: boolean;
   busy: SubmissionAction | null;
   progress: number;
   fieldErrors: ApiFieldErrors;
   onSubmit: (file: File, notes: string) => Promise<boolean>;
 }) {
-  const replacing = existing !== null;
   const [open, setOpen] = useState(!replacing);
   const [file, setFile] = useState<File | null>(null);
-  const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [notes, setNotes] = useState(initialNotes);
   const [fileError, setFileError] = useState("");
   const fileLabelId = useId();
   const fileInputId = useId();

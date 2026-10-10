@@ -61,6 +61,18 @@ describe("API error handling", () => {
     expect(error.message).toBe("ایمیل: مقدار واردشده معتبر نیست.");
   });
 
+  it("keeps a readable 403 reason and localizes known ones", () => {
+    expect(getApiErrorMessage(responseError(403, {
+      detail: "You can retake the placement test after 2026-10-20.",
+    }))).toBe("You can retake the placement test after 2026-10-20.");
+    expect(getApiErrorMessage(responseError(403, {
+      detail: "Enroll in this course to take its tests.",
+    }))).toBe("برای شرکت در این آزمون، ابتدا دوره آن را تهیه کنید.");
+    expect(getApiErrorMessage(responseError(403, {
+      detail: "You do not have permission to perform this action.",
+    }))).toBe("شما اجازه انجام این عملیات را ندارید.");
+  });
+
   it("maps 200 and 201 success responses", () => {
     expect(getApiSuccessMessage(200)).toBe("عملیات با موفقیت انجام شد.");
     expect(getApiSuccessMessage(201)).toBe("اطلاعات با موفقیت ثبت شد.");

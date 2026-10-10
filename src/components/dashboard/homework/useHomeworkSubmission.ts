@@ -3,7 +3,11 @@
 import { useRef, useState } from "react";
 import { normalizeApiError, type ApiFieldErrors } from "@/lib/apiErrors";
 import { saveBlob } from "@/lib/files";
-import { homeworkApi, type Homework } from "@/lib/homeworkApi";
+import {
+  homeworkApi,
+  type Homework,
+  type HomeworkSubmission,
+} from "@/lib/homeworkApi";
 import { useAppDispatch } from "@/store/hooks";
 import {
   fetchHomework,
@@ -29,9 +33,13 @@ const STALE_STATE_KINDS = new Set([
 /**
  * Submit / replace, delete and download actions for the current student's
  * answer. Successful changes are written back to the cached homework so the
- * list and detail pages update without refetching.
+ * list and detail pages update without refetching. `details` is the full
+ * submission record, when it has loaded.
  */
-export function useHomeworkSubmission(homework: Homework) {
+export function useHomeworkSubmission(
+  homework: Homework,
+  details: HomeworkSubmission | null,
+) {
   const dispatch = useAppDispatch();
   const inFlight = useRef(false);
   const [busy, setBusy] = useState<SubmissionAction | null>(null);
@@ -97,7 +105,9 @@ export function useHomeworkSubmission(homework: Homework) {
 
     try {
       await homeworkApi.deleteSubmission(submission.id);
-      dispatch(homeworkSubmissionRemoved({ homeworkId }));
+      dispatch(
+        homeworkSubmissionRemoved({ homeworkId, submissionId: submission.id }),
+      );
       setFeedback({ type: "success", text: "پاسخ ارسال‌شده حذف شد." });
       return true;
     } catch (error) {
@@ -107,7 +117,9 @@ export function useHomeworkSubmission(homework: Homework) {
       );
       if (apiError.kind === "not-found") {
         // Already gone on the server; bring the cache in line with it.
-        dispatch(homeworkSubmissionRemoved({ homeworkId }));
+        dispatch(
+          homeworkSubmissionRemoved({ homeworkId, submissionId: submission.id }),
+        );
         setFeedback({ type: "success", text: "این پاسخ پیش‌تر حذف شده است." });
         return true;
       }
@@ -130,7 +142,7 @@ export function useHomeworkSubmission(homework: Homework) {
       );
       saveBlob(
         blob,
-        fileName || submission.file_name || `homework-${homeworkId}`,
+        fileName || details?.file_name || `homework-${homeworkId}`,
       );
     } catch (error) {
       setFeedback({

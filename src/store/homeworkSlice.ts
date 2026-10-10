@@ -11,9 +11,12 @@ import {
 import { isCacheFresh } from "@/lib/cache";
 import {
   homeworkApi,
+  isFullSubmission,
+  toSubmissionSummary,
   type Homework,
   type HomeworkScope,
   type HomeworkSubmission,
+  type HomeworkSubmissionSummary,
 } from "@/lib/homeworkApi";
 import type { Paginated } from "@/lib/studentApi";
 import { loadMe, login, logout, register } from "./authSlice";
@@ -38,9 +41,11 @@ export type HomeworkState = {
   /** Server-filtered pages, keyed by `homeworkListKey`. */
   lists: Record<string, HomeworkEntry<Paginated<Homework>>>;
   details: Record<number, HomeworkEntry<Homework>>;
+  /** Full submission records, keyed by submission id. */
+  submissions: Record<number, HomeworkEntry<HomeworkSubmission>>;
 };
 
-const initialState: HomeworkState = { lists: {}, details: {} };
+const initialState: HomeworkState = { lists: {}, details: {}, submissions: {} };
 
 type HomeworkThunkConfig = {
   state: { homework: HomeworkState };
@@ -49,6 +54,7 @@ type HomeworkThunkConfig = {
 
 const LIST_ERROR = "دریافت تکالیف ناموفق بود.";
 const DETAIL_ERROR = "دریافت اطلاعات تکلیف ناموفق بود.";
+const SUBMISSION_ERROR = "دریافت جزئیات پاسخ ارسال‌شده ناموفق بود.";
 
 export function homeworkListKey({ page, course, scope }: HomeworkListFilters) {
   return `${page}|${course ?? ""}|${scope ?? ""}`;
@@ -101,6 +107,32 @@ export const fetchHomework = createAsyncThunk<
   },
 );
 
+/**
+ * Loads the student's full submission; the homework itself only carries its
+ * summary.
+ */
+export const fetchHomeworkSubmission = createAsyncThunk<
+  HomeworkSubmission,
+  { id: number; force?: boolean },
+  HomeworkThunkConfig
+>(
+  "homework/submission",
+  async ({ id }, api) => {
+    try {
+      return await homeworkApi.getSubmission(id);
+    } catch (error) {
+      return api.rejectWithValue(toApiErrorInfo(error, SUBMISSION_ERROR));
+    }
+  },
+  {
+    condition: ({ id, force }, { getState }) => {
+      const entry = getState().homework.submissions[id];
+      if (entry?.status === "loading") return false;
+      return Boolean(force) || !isCacheFresh(entry?.lastFetched);
+    },
+  },
+);
+
 function pendingEntry<T>(
   entry: HomeworkEntry<T> | undefined,
 ): HomeworkEntry<T> {
@@ -137,11 +169,26 @@ function failedEntry<T>(
   };
 }
 
+/**
+ * Keeps a full `my_submission` as the submission record, so the detail page
+ * does not request it again. A summary-only one is left for that request.
+ */
+function cacheEmbeddedSubmission(
+  state: HomeworkState,
+  homework: Homework,
+  fetchedAt: number,
+) {
+  const submission = homework.my_submission;
+  if (!isFullSubmission(submission)) return;
+  if (state.submissions[submission.id]?.status === "loading") return;
+  state.submissions[submission.id] = loadedEntry(submission, fetchedAt);
+}
+
 /** Applies a submission change to every cached copy of the homework. */
 function setCachedSubmission(
   state: HomeworkState,
   homeworkId: number,
-  submission: HomeworkSubmission | null,
+  submission: HomeworkSubmissionSummary | null,
 ) {
   const detail = state.details[homeworkId]?.data;
   if (detail) detail.my_submission = submission;
@@ -163,17 +210,16 @@ const homeworkSlice = createSlice({
         submission: HomeworkSubmission;
       }>,
     ) {
-      setCachedSubmission(
-        state,
-        action.payload.homeworkId,
-        action.payload.submission,
-      );
+      const { homeworkId, submission } = action.payload;
+      setCachedSubmission(state, homeworkId, toSubmissionSummary(submission));
+      state.submissions[submission.id] = loadedEntry(submission, Date.now());
     },
     homeworkSubmissionRemoved(
       state,
-      action: PayloadAction<{ homeworkId: number }>,
+      action: PayloadAction<{ homeworkId: number; submissionId: number }>,
     ) {
       setCachedSubmission(state, action.payload.homeworkId, null);
+      delete state.submissions[action.payload.submissionId];
     },
   },
   extraReducers(builder) {
@@ -189,6 +235,7 @@ const homeworkSlice = createSlice({
         // The list returns complete homework objects, so opening one of them
         // does not need another request.
         for (const homework of data.results) {
+          cacheEmbeddedSubmission(state, homework, fetchedAt);
           if (state.details[homework.id]?.status === "loading") continue;
           state.details[homework.id] = loadedEntry(homework, fetchedAt);
         }
@@ -207,7 +254,9 @@ const homeworkSlice = createSlice({
       })
       .addCase(fetchHomework.fulfilled, (state, action) => {
         const homework = action.payload;
-        state.details[homework.id] = loadedEntry(homework, Date.now());
+        const fetchedAt = Date.now();
+        state.details[homework.id] = loadedEntry(homework, fetchedAt);
+        cacheEmbeddedSubmission(state, homework, fetchedAt);
         for (const entry of Object.values(state.lists)) {
           const index =
             entry.data?.results.findIndex((item) => item.id === homework.id) ??
@@ -221,6 +270,22 @@ const homeworkSlice = createSlice({
           state.details[id],
           action.payload,
           DETAIL_ERROR,
+        );
+      })
+      .addCase(fetchHomeworkSubmission.pending, (state, action) => {
+        const { id } = action.meta.arg;
+        state.submissions[id] = pendingEntry(state.submissions[id]);
+      })
+      .addCase(fetchHomeworkSubmission.fulfilled, (state, action) => {
+        const submission = action.payload;
+        state.submissions[submission.id] = loadedEntry(submission, Date.now());
+      })
+      .addCase(fetchHomeworkSubmission.rejected, (state, action) => {
+        const { id } = action.meta.arg;
+        state.submissions[id] = failedEntry(
+          state.submissions[id],
+          action.payload,
+          SUBMISSION_ERROR,
         );
       })
       .addCase(logout, () => initialState)
