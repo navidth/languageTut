@@ -1,58 +1,51 @@
 import { menuItems } from "@/lib/constants";
 import Link from "next/link";
-import { HiX } from "react-icons/hi";
-import BrandMark from "@/components/ui/BrandMark";
-import LandingAccountAction from "./LandingAccountAction";
+import { activeMenuItemClass, idleMenuItemClass, useActiveMenuLink } from "./menuState";
 
-export default function MobileMenu({
-      open,
-      onClose,
-      pathName,
-}: {
-      open: boolean;
-      onClose: () => void;
-      pathName: string;
-}) {
+// Floating bottom bar below md, in the same pill style as the desktop menu.
+// Items are icons only; the current one opens into a pill with its label.
+// Below 360px the items and label shrink a step, so the longest label fits.
+export default function MobileMenu({ pathName }: { pathName: string }) {
+      const { activeLink, select } = useActiveMenuLink(pathName);
+
       return (
-            <div
-                  aria-hidden={!open}
-                  inert={!open}
-                  className={`
-                        fixed inset-0 z-[999] bg-background/95 backdrop-blur-xl transition-transform duration-300
-                        ${open ? "translate-x-0" : "pointer-events-none translate-x-full"}
-                        md:hidden
-                  `}
+            <nav
+                  dir="rtl"
+                  aria-label="منوی اصلی"
+                  className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-sm items-center justify-between rounded-full border border-border bg-muted/95 p-1.5 shadow-[var(--shadow-brand-md)] backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-[var(--glass)]"
             >
-                  <div className="flex items-center justify-between p-6">
-                        <BrandMark variant="wordmark" className="cursor-pointer dark:hidden" />
-                        <BrandMark variant="wordmark" inverse className="hidden cursor-pointer dark:inline-flex" />
-                        <button type="button" onClick={onClose} aria-label="بستن منوی اصلی" className="rounded-xl p-2 text-foreground hover:bg-accent-soft">
-                              <HiX size={26} />
-                        </button>
-                  </div>
+                  {menuItems.map((item) => {
+                        const active = item.link === activeLink;
 
-                  <nav className="mt-10 flex flex-col gap-6 px-8 text-lg">
-                        {menuItems.map((item) => (
+                        return (
                               <Link
                                     key={item.id}
                                     href={item.link}
-                                    onClick={onClose}
-                                    className={`flex items-center gap-4 rounded-2xl p-4 text-lg ${
-                                          typeof item.link === "object" ||
-                                          (typeof item.link === "string" &&
-                                                pathName &&
-                                                (pathName === item.link || (pathName.startsWith(item.link) && item.link !== "/")))
-                                                ? "bg-accent text-accent-foreground shadow-sm"
-                                                : "text-foreground"
-                                    } hover:bg-accent-soft hover:text-brand-primary`}
+                                    onClick={() => select(item.link)}
+                                    aria-current={active ? (item.link.includes("#") ? "location" : "page") : undefined}
+                                    className={`flex h-12 min-w-10 items-center justify-center rounded-full px-2.5 min-[360px]:min-w-12 min-[360px]:px-3 ${active ? activeMenuItemClass : `${idleMenuItemClass} hover:bg-card/60`}`}
                               >
-                                    {item.icon && typeof item.icon === "function" && <item.icon size={24} />}
-                                    {item.label}
+                                    {item.icon && typeof item.icon === "function" && (
+                                          <item.icon
+                                                size={22}
+                                                className={`shrink-0 ${active ? "animate-[nav-icon-pop_450ms_ease-out] text-brand-accent" : ""}`}
+                                          />
+                                    )}
+                                    {/* The column grows from 0fr to 1fr, so the label opens to its own width. */}
+                                    <span
+                                          className={`grid transition-[grid-template-columns] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${active ? "grid-cols-[1fr]" : "grid-cols-[0fr]"}`}
+                                    >
+                                          <span className="min-w-0 overflow-hidden">
+                                                <span
+                                                      className={`block whitespace-nowrap ps-2 text-xs font-medium transition-[opacity,translate,filter] min-[360px]:text-sm duration-300 ${active ? "translate-x-0 opacity-100 blur-none delay-100" : "translate-x-3 opacity-0 blur-[2px]"}`}
+                                                >
+                                                      {item.label}
+                                                </span>
+                                          </span>
+                                    </span>
                               </Link>
-                        ))}
-
-                        <LandingAccountAction mobile onNavigate={onClose} />
-                  </nav>
-            </div>
+                        );
+                  })}
+            </nav>
       );
 }

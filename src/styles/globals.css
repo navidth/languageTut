@@ -109,36 +109,42 @@
   --sidebar-ring: var(--brand-accent);
 }
 
+/* Dark theme. The page sits one step above brand-primary, so the sections
+   and footer that use brand-primary still read as darker bands, and cards sit
+   one step above the page. Every surface keeps the brand's plum hue. */
 .dark {
   color-scheme: dark;
-  --background: var(--brand-primary);
-  --foreground: #fafafa;
-  --card: #21131f;
-  --card-foreground: #fafafa;
-  --popover: #21131f;
-  --popover-foreground: #fafafa;
+  --background: #1a1019;
+  --foreground: #f6eff4;
+  --card: #251824;
+  --card-foreground: #f6eff4;
+  --popover: #251824;
+  --popover-foreground: #f6eff4;
   --primary: #f5edf3;
   --primary-foreground: var(--brand-primary);
   --secondary: var(--brand-secondary);
   --secondary-foreground: #ffffff;
   --accent: var(--brand-accent);
   --accent-foreground: var(--brand-primary);
-  --muted: #321c2e;
-  --muted-foreground: #d8c8d4;
-  --border: #573950;
-  --input: #76506e;
+  --muted: #31202f;
+  --muted-foreground: #c9b7c4;
+  --border: #4a3146;
+  --input: #6a4763;
   --ring: var(--brand-accent);
   --destructive: #f28b82;
   --success: #72c895;
   --warning: #f2b46e;
-  --primary-soft: #2b1928;
+  --primary-soft: #332139;
   --secondary-soft: #3b2137;
   --accent-soft: #4a2c16;
   --success-soft: #163b29;
   --destructive-soft: #45211f;
-  --glass: rgb(19 9 18 / 0.9);
+  --glass: rgb(26 16 25 / 0.86);
   --sidebar: #0e070d;
   --sidebar-border: rgb(255 255 255 / 0.14);
+  /* Light-mode shadows are plum-tinted and too faint to show on dark surfaces. */
+  --shadow-brand-sm: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.28);
+  --shadow-brand-md: 0 18px 48px rgb(0 0 0 / 0.5);
 }
 
 * {
@@ -189,6 +195,13 @@ option {
 
 [lang="en"] {
   font-family: var(--font-english);
+}
+
+/* Latin codes such as the CEFR levels A1–C2. IRANSans FaNum draws every
+   digit as a Persian numeral, so these use the system sans-serif. It is
+   unlayered and after the rule above so it wins on a lang="en" element. */
+.latin-code {
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 :where(a, button, input, select, textarea, summary) {
@@ -376,6 +389,26 @@ option {
   .bidi-text {
     unicode-bidi: plaintext;
     text-align: right;
+  }
+}
+
+/* The home page logo strip; see PromoStrip for why it moves to +50%. */
+@keyframes promo-marquee {
+  to {
+    transform: translateX(50%);
+  }
+}
+
+/* The mobile menu's icon pops when its item becomes the current one. */
+@keyframes nav-icon-pop {
+  0% {
+    transform: scale(0.6) rotate(-12deg);
+  }
+  60% {
+    transform: scale(1.15) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
   }
 }
 

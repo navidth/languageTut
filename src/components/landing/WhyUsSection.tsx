@@ -84,7 +84,7 @@ export default function WhyUsSection() {
 
           <article className="surface-card rounded-[2rem] p-7 lg:col-span-5">
             <div className="flex items-center gap-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-brand-secondary">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-brand-secondary dark:text-brand-accent">
                 <HiOutlineChartBar className="size-6" aria-hidden="true" />
               </span>
               <div>

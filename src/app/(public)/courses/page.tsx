@@ -32,7 +32,7 @@ export default async function CoursesPage({ searchParams }: Props) {
   const page = parsePageParam(pageParam);
   const data = await getCourses(page);
   return (
-    <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pb-14 pt-28 sm:px-6">
       <header className="mb-10 text-center">
         <h1 className="mb-4 text-3xl font-extrabold md:text-4xl">دوره‌های آموزش آنلاین آیلتس</h1>
         <p className="mx-auto max-w-2xl leading-8 text-muted-foreground">از سطح مقدماتی تا پیشرفته، مسیر آموزشی مناسب خود را از میان {data.count.toLocaleString("fa-IR")} دوره انتخاب کنید.</p>

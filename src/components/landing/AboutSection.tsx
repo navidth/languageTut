@@ -55,7 +55,7 @@ export default function AboutSection() {
               <div className="mt-9 space-y-5">
                 {principles.map(({ icon: Icon, title, text }) => (
                   <div key={title} className="flex gap-4">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-brand-secondary">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-brand-secondary dark:text-brand-accent">
                       <Icon className="size-5" aria-hidden="true" />
                     </span>
                     <div>

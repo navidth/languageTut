@@ -17,16 +17,20 @@ type BrandMarkProps = {
 
 // `width` and `height` are the largest size each variant is drawn at, so the
 // image optimizer serves files of about that size instead of the full source
-// images (536×306, 344×66 and 92×222).
+// images (310×168, 344×66 and 92×222). The primary logo is the exception: its
+// drawn width is not a whole number, so it carries the source size and a
+// `sizes` hint instead. brand-logo.png is cropped to the mark itself, with no
+// transparent margin.
 const brandAssets: Record<
   BrandVariant,
-  { src: string; width: number; height: number; className: string }
+  { src: string; width: number; height: number; className: string; sizes?: string }
 > = {
   primary: {
     src: "/brand-logo.png",
-    width: 112,
-    height: 64,
-    className: "h-14 sm:h-16",
+    width: 310,
+    height: 168,
+    className: "h-12 sm:h-14",
+    sizes: "(min-width: 640px) 104px, 89px",
   },
   wordmark: {
     src: "/brand-wordmark.png",
@@ -63,6 +67,7 @@ export default function BrandMark({
         src={asset.src}
         width={asset.width}
         height={asset.height}
+        sizes={asset.sizes}
         alt=""
         aria-hidden="true"
         className={`w-auto object-contain ${asset.className} ${inverse ? "brightness-0 invert" : ""}`}

@@ -5,6 +5,7 @@ import HeroSplit from "@/components/landing/HeroSplit";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import LandingAuthCheck from "@/components/landing/LandingAuthCheck";
 import PlacementTestSection from "@/components/landing/PlacementTestSection";
+import PromoStrip from "@/components/landing/PromoStrip";
 import TrustSection from "@/components/landing/TrustSection";
 import UserTypeSection from "@/components/landing/UserTypeSection";
 // import WhyUsSection from "@/components/landing/WhyUsSection";
@@ -87,6 +88,7 @@ export default function HomePage() {
       <HowItWorksSection />
       <TrustSection />
       <AboutSection />
+      <PromoStrip />
       <FAQSection />
       {/* <FinalCTASection /> */}
     </LandingAuthCheck>

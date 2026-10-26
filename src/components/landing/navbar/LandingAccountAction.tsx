@@ -13,15 +13,9 @@ const roleLabels: Record<UserRole, string> = {
   admin: "مدیر",
 };
 
-type LandingAccountActionProps = {
-  mobile?: boolean;
-  onNavigate?: () => void;
-};
-
-export default function LandingAccountAction({
-  mobile = false,
-  onNavigate,
-}: LandingAccountActionProps) {
+// Below md the header is narrow, so this shows only the avatar or a compact
+// button; from md up it shows the full account card.
+export default function LandingAccountAction() {
   const { user, status } = useAppSelector((state) => state.auth);
 
   if (status === "authenticated" && user) {
@@ -31,18 +25,13 @@ export default function LandingAccountAction({
     return (
       <Link
         href={dashboardRouteForRole(user.role)}
-        onClick={onNavigate}
         aria-label={`${displayName}، نقش ${roleLabel}؛ رفتن به داشبورد`}
-        className={`group items-center gap-3 rounded-2xl border border-border bg-card text-start shadow-[var(--shadow-brand-sm)] hover:border-brand-accent hover:bg-accent-soft ${
-          mobile
-            ? "mt-5 flex w-full p-3"
-            : "hidden max-w-56 px-3 py-2 md:flex"
-        }`}
+        className="group flex shrink-0 items-center gap-3 rounded-xl text-start md:max-w-56 md:rounded-2xl md:border md:border-border md:bg-card md:px-3 md:py-2 md:shadow-[var(--shadow-brand-sm)] md:hover:border-brand-accent md:hover:bg-accent-soft"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-primary text-sm font-black text-brand-accent">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-primary text-sm font-black text-brand-accent dark:ring-1 dark:ring-white/15">
           {displayName.slice(0, 1)}
         </span>
-        <span className="min-w-0 flex-1">
+        <span className="hidden min-w-0 flex-1 md:block">
           <strong className="block truncate text-sm font-black text-foreground">
             {displayName}
           </strong>
@@ -51,7 +40,7 @@ export default function LandingAccountAction({
           </span>
         </span>
         <HiChevronLeft
-          className="size-4 shrink-0 text-muted-foreground group-hover:text-brand-secondary dark:group-hover:text-brand-accent"
+          className="hidden size-4 shrink-0 text-muted-foreground group-hover:text-brand-secondary md:block dark:group-hover:text-brand-accent"
           aria-hidden="true"
         />
       </Link>
@@ -59,11 +48,7 @@ export default function LandingAccountAction({
   }
 
   return (
-    <AuthModalButton
-      fullWidth={mobile}
-      className={mobile ? "mt-5 min-h-12 rounded-xl" : "hidden cursor-pointer md:flex"}
-      onOpened={onNavigate}
-    >
+    <AuthModalButton className="h-9 cursor-pointer px-3 sm:px-4 md:h-10 md:px-5">
       شروع یادگیری
     </AuthModalButton>
   );

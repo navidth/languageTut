@@ -88,7 +88,7 @@ export default async function CoursePage({ params, searchParams }: Props) {
   };
 
   return (
-    <article className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+    <article className="mx-auto max-w-6xl px-4 pb-14 pt-28 sm:px-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}

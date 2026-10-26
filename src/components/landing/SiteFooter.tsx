@@ -14,9 +14,9 @@ const footerGroups = [
   {
     title: "ExamificatioN",
     links: [
-      { label: "امکانات", href: "/#features" },
+      { label: "امکانات", href: "/features" },
       { label: "نحوه کار", href: "/#how-it-works" },
-      { label: "درباره ما", href: "/#about" },
+      { label: "درباره ما", href: "/about" },
     ],
   },
   {
@@ -31,7 +31,7 @@ const footerGroups = [
 
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 bg-brand-primary px-4 text-white sm:px-6">
+    <footer className="border-t border-white/10 bg-brand-primary px-4 pb-20 text-white sm:px-6 md:pb-0">
       <div className="mx-auto max-w-6xl py-14 lg:py-16">
         <div className="grid gap-12 lg:grid-cols-[1.15fr_1.85fr]">
           <div>

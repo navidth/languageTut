@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <main className="grid min-h-[70vh] place-items-center bg-background px-4 py-20 text-foreground">
       <div className="max-w-xl text-center">
-        <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-accent-soft text-brand-secondary">
+        <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-accent-soft text-brand-secondary dark:text-brand-accent">
           <HiOutlineSearch className="size-8" aria-hidden="true" />
         </span>
         <p lang="en" dir="ltr" className="mt-6 text-sm font-black tracking-[0.25em] text-brand-accent">ERROR 404</p>

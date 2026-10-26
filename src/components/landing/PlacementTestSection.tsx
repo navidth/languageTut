@@ -22,7 +22,7 @@ export default function PlacementTestSection() {
       aria-labelledby="placement-heading"
       className="scroll-mt-24 bg-background px-4 py-16 outline-none sm:px-6 lg:py-10"
     >
-      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-primary via-brand-primary to-brand-secondary px-6 py-14 text-white shadow-[var(--shadow-brand-md)] sm:px-10 lg:px-16 lg:py-20">
+      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-brand-primary via-brand-primary to-brand-secondary px-6 py-14 text-white shadow-[var(--shadow-brand-md)] sm:px-10 lg:px-16 lg:py-20 dark:border dark:border-white/10">
         <div
           className="pointer-events-none absolute -start-20 -top-24 size-72 rounded-full border border-white/10 bg-brand-accent/10 blur-sm"
           aria-hidden="true"

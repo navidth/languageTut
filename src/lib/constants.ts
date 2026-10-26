@@ -1,7 +1,7 @@
 import { MenuItems } from "@/types";
 import { BsPersonCircle } from "react-icons/bs";
 import { FaLayerGroup, FaQuestionCircle, FaReadme } from "react-icons/fa";
-import { HiOutlineInformationCircle, HiSparkles } from "react-icons/hi";
+import { HiChartBar, HiOutlineInformationCircle, HiSparkles } from "react-icons/hi";
 import {
   MdAssignment,
   MdCastForEducation,
@@ -14,10 +14,11 @@ import { RiHome4Fill } from "react-icons/ri";
 export const menuItems: MenuItems = [
   { id: 1, link: "/", label: "خانه", icon: RiHome4Fill },
   { id: 2, link: "/courses", label: "دوره‌ها", icon: MdCastForEducation },
-  { id: 3, link: "/#features", label: "امکانات", icon: HiSparkles },
+  { id: 5, link: "/ielts", label: "IELTS", icon: HiChartBar },
+  { id: 3, link: "/features", label: "امکانات", icon: HiSparkles },
   {
     id: 4,
-    link: "/#about",
+    link: "/about",
     label: "درباره ما",
     icon: HiOutlineInformationCircle,
   },

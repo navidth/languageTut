@@ -5,7 +5,7 @@ import AuthModalButton from "@/components/auth/AuthModalButton";
 export default function FinalCTASection() {
   return (
     <section aria-labelledby="final-cta-heading" className="bg-background px-4 pb-24 sm:px-6 lg:pb-32">
-      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-brand-primary px-6 py-16 text-center text-white shadow-[var(--shadow-brand-md)] sm:px-10 lg:py-20">
+      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-brand-primary px-6 py-16 text-center text-white shadow-[var(--shadow-brand-md)] sm:px-10 lg:py-20 dark:border dark:border-white/10">
         <div className="pointer-events-none absolute -start-20 -top-24 size-72 rounded-full bg-brand-secondary/70 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute -bottom-36 -end-20 size-80 rounded-full bg-brand-accent/15 blur-3xl" aria-hidden="true" />
         <HiSparkles className="absolute end-[12%] top-12 hidden size-10 rotate-12 text-brand-accent/40 sm:block" aria-hidden="true" />

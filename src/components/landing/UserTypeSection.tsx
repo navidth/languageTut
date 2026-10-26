@@ -35,7 +35,7 @@ export default function UserTypeSection() {
               01
             </span>
             <div className="relative">
-              <span className="grid size-14 place-items-center rounded-2xl bg-accent-soft text-brand-secondary">
+              <span className="grid size-14 place-items-center rounded-2xl bg-accent-soft text-brand-secondary dark:text-brand-accent">
                 <HiAcademicCap className="size-7" aria-hidden="true" />
               </span>
               <p className="mt-8 text-sm font-bold text-brand-secondary dark:text-brand-accent">برای زبان‌آموز</p>
