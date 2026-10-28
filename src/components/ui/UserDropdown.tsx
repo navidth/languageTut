@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BiLogOut } from "react-icons/bi";
 import { BsPersonCircle } from "react-icons/bs";
 import { HiChevronDown } from "react-icons/hi";
+import { hasStoredSession } from "@/lib/apiClient";
 import { loadMe, signOut } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import HeaderMenu, {
@@ -23,8 +24,7 @@ function UserDropdown() {
   const { user, status } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (accessToken && status !== "authenticated" && status !== "loading") {
+    if (hasStoredSession() && status !== "authenticated" && status !== "loading") {
       void dispatch(loadMe());
     }
   }, [dispatch, status]);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiCheckCircle, HiLockClosed } from "react-icons/hi";
 import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
+import { LoadingContent } from "@/components/ui/PulseLoader";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 import { coursesApi, type Course } from "@/lib/courses";
 import { studentApi } from "@/lib/studentApi";
@@ -85,9 +86,8 @@ export default function CourseStartAction({ initialCourse }: { initialCourse: Co
 
   const authenticatedStudent = status === "authenticated" && user?.role === "student";
   const hasAccess = authenticatedStudent && course.has_access;
-  const label = status === "loading" || authBusy
-    ? "در حال بررسی حساب..."
-    : !user
+  const checkingAccount = status === "loading" || authBusy;
+  const label = !user
       ? "ورود و شروع دوره"
       : user.role !== "student"
         ? "ویژه دانش‌آموزان"
@@ -117,9 +117,15 @@ export default function CourseStartAction({ initialCourse }: { initialCourse: Co
         type="button"
         onClick={() => void handleAction()}
         disabled={busy || authBusy || status === "loading" || (Boolean(user) && user?.role !== "student")}
+        aria-busy={busy || checkingAccount}
         className="brand-button w-full rounded-xl px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {busy ? "در حال آماده‌سازی دوره..." : label}
+        <LoadingContent
+          loading={busy || checkingAccount}
+          label={busy ? "در حال آماده‌سازی دوره" : "در حال بررسی حساب"}
+        >
+          {label}
+        </LoadingContent>
       </button>
       {error && <p className="mt-3 text-xs leading-6 text-red-200" role="alert">{error}</p>}
     </div>

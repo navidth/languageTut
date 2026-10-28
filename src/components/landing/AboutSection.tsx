@@ -1,5 +1,6 @@
 import { HiAcademicCap, HiSparkles, HiUserGroup } from "react-icons/hi";
 import BrandMark from "@/components/ui/BrandMark";
+import Reveal from "@/components/ui/Reveal";
 
 const principles = [
   {
@@ -27,7 +28,7 @@ export default function AboutSection() {
       className="bg-secondary-soft px-4 py-24 sm:px-6 lg:py-32"
     >
       <div className="mx-auto max-w-6xl">
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-card shadow-[var(--shadow-brand-md)]">
+        <Reveal className="relative overflow-hidden rounded-[2.5rem] border border-border bg-card shadow-[var(--shadow-brand-md)]">
           <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
             <div className="relative flex min-h-[24rem] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-secondary to-brand-primary p-8 text-white sm:p-12">
               <BrandMark variant="primary" inverse className="relative " />
@@ -69,7 +70,7 @@ export default function AboutSection() {
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

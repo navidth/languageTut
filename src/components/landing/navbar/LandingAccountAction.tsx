@@ -28,7 +28,7 @@ export default function LandingAccountAction() {
         aria-label={`${displayName}، نقش ${roleLabel}؛ رفتن به داشبورد`}
         className="group flex shrink-0 items-center gap-3 rounded-xl text-start md:max-w-56 md:rounded-2xl md:border md:border-border md:bg-card md:px-3 md:py-2 md:shadow-[var(--shadow-brand-sm)] md:hover:border-brand-accent md:hover:bg-accent-soft"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-primary text-sm font-black text-brand-accent dark:ring-1 dark:ring-white/15">
+        <span className="flex items-center justify-center flex-col size-10 rounded-xl  border-brand-background border font-black text-brand-secondary dark:ring-white/15 dark:text-accent">
           {displayName.slice(0, 1)}
         </span>
         <span className="hidden min-w-0 flex-1 md:block">

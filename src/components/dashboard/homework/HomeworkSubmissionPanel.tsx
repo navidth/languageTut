@@ -4,17 +4,16 @@ import {
   useEffect,
   useId,
   useState,
-  type ChangeEvent,
   type FormEvent,
 } from "react";
 import { HiDownload, HiPaperClip, HiTrash, HiUpload } from "react-icons/hi";
 import LoginPrompt from "@/components/auth/LoginPrompt";
 import { useSessionState } from "@/components/auth/useSessionState";
+import FileDropzone from "@/components/ui/FileDropzone";
 import { Skeleton } from "@/components/ui/Skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import type { ApiFieldErrors } from "@/lib/apiErrors";
 import { formatPersianDateTime } from "@/lib/date";
-import { formatFileSize } from "@/lib/files";
 import { formatDecimal } from "@/lib/format";
 import type {
   Homework,
@@ -340,8 +339,7 @@ function SubmissionForm({
   const shownFileError = fileError || fieldErrors.file?.[0] || "";
   const notesError = fieldErrors.notes?.[0];
 
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0] ?? null;
+  function chooseFile(selected: File | null) {
     setFile(selected);
     setFileError(selected?.size === 0 ? "فایل انتخاب‌شده خالی است." : "");
   }
@@ -396,30 +394,16 @@ function SubmissionForm({
       <p id={fileLabelId} className="mb-2 mt-5 text-sm font-bold">
         فایل پاسخ
       </p>
-      <input
+      <FileDropzone
         id={fileInputId}
-        type="file"
-        className="peer sr-only"
+        file={file}
+        onFileChange={chooseFile}
         disabled={disabled}
-        onChange={chooseFile}
+        invalid={Boolean(shownFileError)}
         aria-labelledby={fileLabelId}
-        aria-invalid={Boolean(shownFileError)}
         aria-describedby={shownFileError ? fileErrorId : undefined}
+        hint="یک فایل شامل پاسخ خود را بارگذاری کنید."
       />
-      <label
-        htmlFor={fileInputId}
-        className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-input bg-secondary-soft/30 p-6 text-center hover:border-brand-accent peer-focus-visible:border-brand-accent peer-focus-visible:ring-4 peer-focus-visible:ring-accent-soft peer-disabled:cursor-not-allowed peer-disabled:opacity-60"
-      >
-        <HiUpload className="size-7 text-brand-accent" aria-hidden="true" />
-        <span className="max-w-full truncate text-sm font-bold" dir="auto">
-          {file ? file.name : "برای انتخاب فایل کلیک کنید"}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {file
-            ? formatFileSize(file.size)
-            : "یک فایل شامل پاسخ خود را بارگذاری کنید."}
-        </span>
-      </label>
       {shownFileError && (
         <p id={fileErrorId} className="mt-2 text-xs text-destructive" role="alert">
           {shownFileError}

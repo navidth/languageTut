@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { hasStoredSession as hasSavedSession } from "@/lib/apiClient";
 import type { User } from "@/lib/auth";
 import {
+  type AuthDialogView,
   type AuthIntent,
   type AuthenticationMode,
   resolvePostAuthenticationFlow,
@@ -28,8 +29,13 @@ const loadAuthenticationModal = () => import("./AuthenticationModal");
 // users do not carry it.
 const AuthenticationModal = lazy(loadAuthenticationModal);
 
+type AuthFlowOptions = {
+  /** Opens the dialog on this screen when it has to ask for sign-in. */
+  view?: AuthDialogView;
+};
+
 type AuthFlowContextValue = {
-  startAuthFlow: (intent?: AuthIntent) => Promise<void>;
+  startAuthFlow: (intent?: AuthIntent, options?: AuthFlowOptions) => Promise<void>;
   busy: boolean;
 };
 
@@ -44,6 +50,7 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
   // Stays true after the first open, so closing can still animate.
   const [modalMounted, setModalMounted] = useState(false);
   const [intent, setIntent] = useState<AuthIntent>("learning");
+  const [dialogView, setDialogView] = useState<AuthDialogView>("password");
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const queuedIntentRef = useRef<AuthIntent | null>(null);
@@ -133,10 +140,14 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
     }
   }, [authError, continueFlow, openModal, status, user]);
 
-  const startAuthFlow = useCallback(async (requestedIntent: AuthIntent = "learning") => {
+  const startAuthFlow = useCallback(async (
+    requestedIntent: AuthIntent = "learning",
+    options: AuthFlowOptions = {},
+  ) => {
     if (checkingProfile || modalOpen) return;
     setProfileError("");
     setIntent(requestedIntent);
+    setDialogView(options.view ?? "password");
 
     if (status === "authenticated" && user) {
       continueFlow(user, requestedIntent);
@@ -149,11 +160,7 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
       return;
     }
 
-    const hasStoredSession = Boolean(
-      localStorage.getItem("accessToken") || localStorage.getItem("refreshToken"),
-    );
-
-    if (!hasStoredSession) {
+    if (!hasSavedSession()) {
       openModal();
       return;
     }
@@ -185,6 +192,7 @@ export default function AuthFlowProvider({ children }: { children: React.ReactNo
           <AuthenticationModal
             open={modalOpen}
             profileError={profileError}
+            initialView={dialogView}
             onClose={() => {
               setModalOpen(false);
               setProfileError("");

@@ -59,6 +59,22 @@ export type SmsPasswordResetConfirmRequest = {
   new_password: string;
 };
 
+export type EmailPasswordResetConfirmRequest = {
+  email: string;
+  /** 4 to 8 digits. */
+  code: string;
+  /** At least 8 characters. */
+  new_password: string;
+};
+
+/** The `uid` and `token` come from the link in a password reset email. */
+export type PasswordResetConfirmRequest = {
+  uid: string;
+  token: string;
+  /** At least 8 characters. */
+  new_password: string;
+};
+
 /**
  * Body of `PUT /api/auth/me/`, which replaces every editable field.
  * Role, level and the verified flags are read-only there.
@@ -127,8 +143,28 @@ export const authApi = {
     await apiClient.post("/api/auth/logout/", { refresh });
   },
 
+  /**
+   * Emails a reset link carrying a `uid` and `token`, which the
+   * /reset-password page confirms. The sign-in dialog uses the code instead.
+   */
   requestPasswordReset: async (email: string) => {
     const response = await apiClient.post<DetailResponse>("/api/auth/password/reset/", { email });
+    return response.data;
+  },
+
+  confirmPasswordReset: async (data: PasswordResetConfirmRequest) => {
+    const response = await apiClient.post<DetailResponse>("/api/auth/password/reset/confirm/", data);
+    return response.data;
+  },
+
+  /** Emails a reset code. Answers the same whether or not the address has an account. */
+  requestEmailPasswordReset: async (email: string) => {
+    const response = await apiClient.post<DetailResponse>("/api/auth/password/reset/email-code/", { email });
+    return response.data;
+  },
+
+  confirmEmailPasswordReset: async (data: EmailPasswordResetConfirmRequest) => {
+    const response = await apiClient.post<DetailResponse>("/api/auth/password/reset/email-code/confirm/", data);
     return response.data;
   },
 

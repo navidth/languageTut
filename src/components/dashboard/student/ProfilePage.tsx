@@ -12,6 +12,7 @@ import { getApiErrorMessage } from "@/lib/apiErrors";
 import { formatPersianDate } from "@/lib/date";
 import { useAuthFeatures } from "@/components/auth/useAuthFeatures";
 import AsyncState from "@/components/ui/AsyncState";
+import CodeInput from "@/components/ui/CodeInput";
 import { loadMe, updateProfile, type ProfileUpdateError } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
@@ -321,13 +322,10 @@ function PhoneStatus({ user }: { user: User }) {
         codeSent ? (
           <form onSubmit={verify} className="mt-3 flex gap-2">
             <label htmlFor="profile-phone-code" className="sr-only">کد تأیید</label>
-            <input
+            <CodeInput
               id="profile-phone-code"
-              dir="ltr"
-              inputMode="numeric"
-              autoComplete="one-time-code"
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onValueChange={setCode}
               className="min-w-0 flex-1 rounded-xl border border-input bg-card p-2 text-left tracking-[0.3em]"
               placeholder="کد تأیید"
             />

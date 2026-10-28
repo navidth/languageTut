@@ -115,6 +115,27 @@ function localizeKnownMessage(message: string): string | null {
   if (/current password/.test(normalized) && /required|needed|enter|provide/.test(normalized)) {
     return "برای تغییر ایمیل یا شماره موبایل، رمز عبور فعلی را وارد کنید.";
   }
+  // Emailed or texted codes, before the generic "enter a valid" rule below.
+  if (/\b(code|otp)\b/.test(normalized) && /invalid|expired|incorrect|wrong|not valid|does not match/.test(normalized)) {
+    return "کد واردشده درست نیست یا منقضی شده است.";
+  }
+  if (/\blink\b/.test(normalized) && /invalid|expired|not valid/.test(normalized)) {
+    return "این لینک بازیابی معتبر نیست یا منقضی شده است.";
+  }
+  // Django's password validators.
+  if (/password is too common/.test(normalized)) {
+    return "این رمز عبور بیش از حد رایج است. رمز دیگری انتخاب کنید.";
+  }
+  if (/password is entirely numeric/.test(normalized)) {
+    return "رمز عبور نباید فقط از عدد تشکیل شده باشد.";
+  }
+  if (/password is too similar/.test(normalized)) {
+    return "رمز عبور بیش از حد به اطلاعات حساب شما شبیه است.";
+  }
+  const minimumLength = normalized.match(/at least (\d+) characters/);
+  if (minimumLength) {
+    return `حداقل ${Number(minimumLength[1]).toLocaleString("fa-IR")} کاراکتر لازم است.`;
+  }
   if (/no active account|invalid credentials|incorrect (email|password)/.test(normalized)) {
     return "ایمیل یا رمز عبور صحیح نیست.";
   }

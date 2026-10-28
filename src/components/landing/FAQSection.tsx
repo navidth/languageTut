@@ -1,4 +1,5 @@
 import { HiPlus } from "react-icons/hi";
+import Reveal from "@/components/ui/Reveal";
 
 export const faqItems = [
   {
@@ -32,7 +33,7 @@ export default function FAQSection() {
   return (
     <section id="faq" aria-labelledby="faq-heading" className="bg-background px-4 py-24 sm:px-6 lg:py-32">
       <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
-        <div className="lg:sticky lg:top-32 lg:self-start">
+        <Reveal className="lg:sticky lg:top-32 lg:self-start">
           <span className="section-eyebrow">پاسخ کوتاه و روشن</span>
           <h2 id="faq-heading" className="mt-5 text-3xl font-black leading-tight text-foreground sm:text-4xl">
             سؤال‌هایی که شاید قبل از شروع داشته باشید
@@ -40,9 +41,9 @@ export default function FAQSection() {
           <p className="mt-5 max-w-md text-base leading-8 text-muted-foreground">
             اگر پاسخ سؤال شما اینجا نیست، بعد از ورود می‌توانید از مسیر راهنمایی داخل پلتفرم استفاده کنید.
           </p>
-        </div>
+        </Reveal>
 
-        <div className="divide-y divide-border border-y border-border">
+        <Reveal delay={120} className="divide-y divide-border border-y border-border">
           {faqItems.map(({ question, answer }, index) => (
             <details key={question} className="group py-1" open={index === 0}>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 text-start text-lg font-bold text-foreground marker:content-none">
@@ -56,7 +57,7 @@ export default function FAQSection() {
               </p>
             </details>
           ))}
-        </div>
+        </Reveal>
       </div>
     </section>
   );

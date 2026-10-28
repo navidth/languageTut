@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   dispatch: vi.fn(),
   modalOpen: null as null | boolean,
+  modalView: null as null | string,
   modalOnAuthenticated: null as null | ((user: User, mode: AuthenticationMode) => void),
 }));
 
@@ -31,12 +32,15 @@ vi.mock("@/store/authSlice", () => ({
 vi.mock("./AuthenticationModal", () => ({
   default: ({
     open,
+    initialView,
     onAuthenticated,
   }: {
     open: boolean;
+    initialView: string;
     onAuthenticated: (user: User, mode: AuthenticationMode) => void;
   }) => {
     mocks.modalOpen = open;
+    mocks.modalView = initialView;
     mocks.modalOnAuthenticated = onAuthenticated;
     return null;
   },
@@ -47,6 +51,15 @@ function SignInButton() {
   return (
     <button type="button" onClick={() => void startAuthFlow()}>
       ورود
+    </button>
+  );
+}
+
+function RecoveryButton() {
+  const { startAuthFlow } = useAuthFlow();
+  return (
+    <button type="button" onClick={() => void startAuthFlow("learning", { view: "forgot" })}>
+      بازیابی
     </button>
   );
 }
@@ -84,6 +97,20 @@ describe("AuthFlowProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "ورود" }));
 
     await waitFor(() => expect(mocks.modalOpen).toBe(true));
+    expect(mocks.modalView).toBe("password");
+  });
+
+  it("opens the dialog on the recovery screen when asked", async () => {
+    render(
+      <AuthFlowProvider>
+        <RecoveryButton />
+      </AuthFlowProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "بازیابی" }));
+
+    await waitFor(() => expect(mocks.modalOpen).toBe(true));
+    expect(mocks.modalView).toBe("forgot");
   });
 
   it("scrolls a newly registered user to the placement section instead of the dashboard", async () => {

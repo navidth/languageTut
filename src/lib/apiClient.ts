@@ -4,30 +4,52 @@ import { normalizeApiError } from "./apiErrors";
 export const BACKEND_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://2.144.27.2:8000";
 
+/** localStorage keys of the JWT pair: written on sign-in, read on every request. */
+export const ACCESS_TOKEN_KEY = "accessToken";
+export const REFRESH_TOKEN_KEY = "refreshToken";
+
+/**
+ * Fired on `window` when the stored session is dropped because the server
+ * rejected the refresh token, so the store signs the user out everywhere.
+ */
+export const SESSION_EXPIRED_EVENT = "examification:session-expired";
+
+/**
+ * An access token this close to its `exp` is renewed before the request goes
+ * out, so the request never reaches the server with a token that just expired.
+ */
+const ACCESS_TOKEN_SKEW_MS = 30_000;
+
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
-const apiClient = axios.create({
-  baseURL: BACKEND_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+const jsonHeaders = { "Content-Type": "application/json" };
 
-const refreshClient = axios.create({
-  baseURL: BACKEND_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+const apiClient = axios.create({ baseURL: BACKEND_BASE_URL, headers: jsonHeaders });
+
+/**
+ * Refresh calls use their own instance so they skip the interceptors below.
+ * Exported for tests, which replace both adapters.
+ */
+export const refreshClient = axios.create({ baseURL: BACKEND_BASE_URL, headers: jsonHeaders });
 
 let refreshRequest: Promise<string> | null = null;
 
+export function storeTokens(access: string, refresh: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, access);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+}
+
+export function getStoredRefreshToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
 export function clearAuthStorage() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
@@ -39,12 +61,78 @@ export function clearAuthStorage() {
 export function hasStoredSession() {
   if (typeof window === "undefined") return false;
   return Boolean(
-    localStorage.getItem("accessToken") || localStorage.getItem("refreshToken"),
+    localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(REFRESH_TOKEN_KEY),
   );
 }
 
+/** The `exp` claim of a JWT as a millisecond timestamp, or `null` when the token cannot be read. */
+export function getJwtExpiry(token: string): number | null {
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const claims: unknown = JSON.parse(atob(padded));
+    const exp = (claims as { exp?: unknown } | null)?.exp;
+    return typeof exp === "number" ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when the access token has expired or will within the skew. A token
+ * without a readable `exp` counts as fresh, so the server decides.
+ */
+export function isAccessTokenExpiring(token: string, now = Date.now()) {
+  const expiry = getJwtExpiry(token);
+  return expiry !== null && expiry - now <= ACCESS_TOKEN_SKEW_MS;
+}
+
+/**
+ * Sign-in, sign-up, token refresh and password reset are for visitors without
+ * a session. They are sent without a bearer token, because the backend answers
+ * 401 to any request carrying an expired one, even on these public endpoints.
+ */
+function isPublicAuthRequest(url = "") {
+  return (
+    url.includes("/api/auth/login/") ||
+    url.includes("/api/auth/register/") ||
+    url.includes("/api/auth/token/refresh/") ||
+    url.includes("/api/auth/password/reset/")
+  );
+}
+
+/**
+ * The refresh token itself was rejected (expired, revoked or malformed). A
+ * network or server failure is not a reason to drop the session.
+ */
+function isRefreshRejected(error: unknown) {
+  if (!axios.isAxiosError(error)) return true;
+  const status = error.response?.status;
+  return status !== undefined && status >= 400 && status < 500;
+}
+
+/**
+ * Ends the session everywhere: storage, the store (through the event) and,
+ * away from the public and student pages, the current URL.
+ */
+function expireSession() {
+  clearAuthStorage();
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  const path = window.location.pathname;
+  // Student pages are intentionally public at the routing layer. Let their
+  // existing loading/error UI handle an unauthenticated API response so
+  // browser Back navigation is not replaced by a forced redirect.
+  const isStudentRoute = path === "/student" || path.startsWith("/student/");
+  if (path !== "/" && !isStudentRoute) {
+    window.location.assign("/");
+  }
+}
+
+/** One refresh at a time: concurrent callers share the same request. */
 async function getFreshAccessToken() {
-  const refreshToken = localStorage.getItem("refreshToken");
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
   if (!refreshToken) {
     throw new Error("Refresh token is missing.");
@@ -52,11 +140,15 @@ async function getFreshAccessToken() {
 
   if (!refreshRequest) {
     refreshRequest = refreshClient
-      .post<{ access: string }>("/api/auth/token/refresh/", {
+      .post<{ access: string; refresh?: string }>("/api/auth/token/refresh/", {
         refresh: refreshToken,
       })
       .then((response) => {
-        localStorage.setItem("accessToken", response.data.access);
+        localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access);
+        // Ready for the day the backend starts rotating refresh tokens.
+        if (response.data.refresh) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh);
+        }
         return response.data.access;
       })
       .finally(() => {
@@ -67,12 +159,32 @@ async function getFreshAccessToken() {
   return refreshRequest;
 }
 
-apiClient.interceptors.request.use((config) => {
-  if (typeof window === "undefined") {
+/** Refreshes the access token; a rejected refresh token ends the session. */
+async function refreshOrExpire() {
+  try {
+    return await getFreshAccessToken();
+  } catch (error) {
+    if (isRefreshRejected(error)) expireSession();
+    throw normalizeApiError(error);
+  }
+}
+
+apiClient.interceptors.request.use(async (config) => {
+  if (typeof window === "undefined" || isPublicAuthRequest(config.url)) {
     return config;
   }
 
-  const accessToken = localStorage.getItem("accessToken");
+  let accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+
+  // Proactive refresh: the usual case of coming back after an hour away costs
+  // no failed round trip, because the token is renewed before the request.
+  if (
+    accessToken &&
+    isAccessTokenExpiring(accessToken) &&
+    localStorage.getItem(REFRESH_TOKEN_KEY)
+  ) {
+    accessToken = await refreshOrExpire();
+  }
 
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -89,42 +201,23 @@ apiClient.interceptors.response.use(
     }
 
     const originalRequest = error.config as RetryableRequestConfig | undefined;
-    const requestUrl = originalRequest?.url ?? "";
-    const isAuthenticationRequest =
-      requestUrl.includes("/api/auth/login/") ||
-      requestUrl.includes("/api/auth/register/") ||
-      requestUrl.includes("/api/auth/token/refresh/");
-    const hasRefreshToken = Boolean(localStorage.getItem("refreshToken"));
 
     if (
       error.response?.status !== 401 ||
       !originalRequest ||
       originalRequest._retry ||
-      isAuthenticationRequest ||
-      !hasRefreshToken
+      isPublicAuthRequest(originalRequest.url) ||
+      !localStorage.getItem(REFRESH_TOKEN_KEY)
     ) {
       return Promise.reject(normalizeApiError(error));
     }
 
+    // The server rejected a token that still looked fresh here (revoked, or a
+    // clock difference the proactive check missed): refresh once and retry.
     originalRequest._retry = true;
-
-    try {
-      const accessToken = await getFreshAccessToken();
-      originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-      return apiClient(originalRequest);
-    } catch (refreshError) {
-      clearAuthStorage();
-      // Student pages are intentionally public at the routing layer. Let their
-      // existing loading/error UI handle an unauthenticated API response so
-      // browser Back navigation is not replaced by a forced redirect.
-      const isStudentRoute =
-        window.location.pathname === "/student" ||
-        window.location.pathname.startsWith("/student/");
-      if (window.location.pathname !== "/" && !isStudentRoute) {
-        window.location.assign("/");
-      }
-      return Promise.reject(normalizeApiError(refreshError));
-    }
+    const accessToken = await refreshOrExpire();
+    originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+    return apiClient(originalRequest);
   },
 );
 

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { getApiErrorMessage, normalizeApiError } from "@/lib/apiErrors";
 import type { Course } from "@/lib/courses";
 import { formatRecommendedLevel } from "@/lib/examPresentation";
-import { formatRemainingTime } from "@/lib/format";
 import { studentExamResultPath } from "@/lib/routes";
 import {
   studentApi,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/studentApi";
 import { useAppDispatch } from "@/store/hooks";
 import { invalidateExamSubmissions } from "@/store/studentSlice";
+import Countdown, { useCountdown } from "@/components/ui/Countdown";
 import PracticeTestMedia, { mediaAvailableBeforeStart } from "./PracticeTestMedia";
 import TestQuestionCard from "./TestQuestionCard";
 
@@ -88,7 +88,6 @@ export default function TestDetailPage({
   const [submission, setSubmission] = useState<PracticeTestAttempt | null>(
     null,
   );
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
   const autoSubmittedRef = useRef<number | null>(null);
 
@@ -108,7 +107,6 @@ export default function TestDetailPage({
     setStartError("");
     setSubmitError("");
     setSubmission(null);
-    setRemainingSeconds(null);
     setTimedOut(false);
     autoSubmittedRef.current = null;
 
@@ -182,24 +180,16 @@ export default function TestDetailPage({
   );
   const running = Boolean(attempt) && !submission && !attemptEnded;
 
+  const remainingMs = useCountdown(
+    running && attempt?.deadline ? Date.parse(attempt.deadline) : null,
+  );
+  const remainingSeconds = remainingMs === null ? null : Math.ceil(remainingMs / 1000);
+  // Answers go in a few seconds early, so the server still accepts them.
+  const deadlineReached = remainingMs !== null && remainingMs <= AUTO_SUBMIT_LEAD_MS;
+
   useEffect(() => {
-    if (!running || !attempt?.deadline) {
-      setRemainingSeconds(null);
-      return;
-    }
-    const deadline = Date.parse(attempt.deadline);
-    if (!Number.isFinite(deadline)) return;
-
-    const updateTimer = () => {
-      const remaining = deadline - Date.now();
-      setRemainingSeconds(Math.max(0, Math.ceil(remaining / 1000)));
-      if (remaining <= AUTO_SUBMIT_LEAD_MS) setTimedOut(true);
-    };
-
-    updateTimer();
-    const timer = window.setInterval(updateTimer, 1000);
-    return () => window.clearInterval(timer);
-  }, [attempt?.deadline, running]);
+    if (deadlineReached) setTimedOut(true);
+  }, [deadlineReached]);
 
   const updateAnswer = useCallback(
     (questionId: number, value: string) => {
@@ -347,15 +337,13 @@ export default function TestDetailPage({
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-center">
             <p>{test.questions_count} سؤال</p>
-            <p
-              className="mt-1 text-sm font-bold text-brand-accent"
-              role="timer"
-              aria-label="زمان باقی‌مانده"
-            >
-              {remainingSeconds == null
-                ? `${test.duration_minutes} دقیقه`
-                : formatRemainingTime(remainingSeconds)}
-            </p>
+            {/* `dark`: the header is plum in both themes, so the urgent red
+                must be the light one. */}
+            <Countdown
+              seconds={remainingSeconds}
+              fallback={`${test.duration_minutes} دقیقه`}
+              className="dark mt-1 text-sm font-bold text-brand-accent"
+            />
           </div>
         </div>
         <p className="page-hero-muted bidi-text mt-4">{test.description}</p>

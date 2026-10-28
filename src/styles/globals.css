@@ -220,6 +220,13 @@ option {
   opacity: 0.52;
 }
 
+/* A button that is busy (showing the PulseLoader) is disabled against double
+   clicks, but it is working, not unavailable, so it keeps its full colour. */
+:where(button)[aria-busy="true"]:disabled {
+  cursor: progress;
+  opacity: 1;
+}
+
 :where(input, select, textarea) {
   accent-color: var(--accent);
   background-color: var(--card);
@@ -340,6 +347,26 @@ option {
     color: var(--brand-primary);
   }
 
+  /* Destructive actions. In dark mode the red is light, so the text turns dark. */
+  .danger-button {
+    border: 1px solid var(--destructive);
+    background: var(--destructive);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .danger-button:hover {
+    background: color-mix(in srgb, var(--destructive) 88%, #000000);
+  }
+
+  .dark .danger-button {
+    color: var(--brand-primary);
+  }
+
+  .dark .danger-button:hover {
+    background: color-mix(in srgb, var(--destructive) 88%, #ffffff);
+  }
+
   .brand-link {
     color: var(--brand-secondary);
     font-weight: 700;
@@ -390,6 +417,111 @@ option {
     unicode-bidi: plaintext;
     text-align: right;
   }
+}
+
+/* Entrance of the home page hero. Pure CSS, so it starts with the first
+   paint and needs no script; `--hero-delay` staggers the pieces. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    translate: 0 1.25rem;
+  }
+}
+
+@keyframes hero-pose-rise {
+  from {
+    opacity: 0;
+    translate: 0 2.5rem;
+  }
+}
+
+.hero-enter {
+  animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--hero-delay, 0s);
+}
+
+.hero-pose-enter {
+  animation: hero-pose-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--hero-delay, 0s);
+}
+
+/* Scroll reveal, driven by src/components/ui/Reveal.tsx. Script applies the
+   hidden state only to elements still below the viewport after hydration. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal="pending"] {
+    opacity: 0;
+    translate: 0 1.75rem;
+  }
+
+  [data-reveal="visible"] {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      translate 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0s);
+  }
+
+  /* Progress bars inside a revealed block fill from the start side (right,
+     since the site is RTL), finishing as the block itself settles. */
+  [data-reveal="pending"] .reveal-grow {
+    scale: 0 1;
+  }
+
+  [data-reveal="visible"] .reveal-grow {
+    transform-origin: right;
+    transition: scale 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--reveal-delay, 0s) + 0.1s);
+  }
+
+  /* Column charts rise from their baseline the same way. */
+  [data-reveal="pending"] .reveal-rise {
+    scale: 1 0;
+  }
+
+  [data-reveal="visible"] .reveal-rise {
+    transform-origin: bottom;
+    transition: scale 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--reveal-delay, 0s) + 0.1s);
+  }
+}
+
+/* PulseLoader: each dot swells and brightens in turn. */
+@keyframes pulse-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    scale: 0.6;
+  }
+
+  40% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.pulse-dot {
+  animation: pulse-dot 1.05s ease-in-out infinite both;
+  animation-delay: var(--pulse-delay, 0s);
+}
+
+/* The global reduced-motion rule would freeze the dots small and faded. */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot {
+    animation: none;
+  }
+}
+
+/* ProgressRing's arc fills from empty when it first appears. */
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+}
+
+.ring-fill {
+  animation: ring-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* The home page logo strip; see PromoStrip for why it moves to +50%. */

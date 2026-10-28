@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { hasStoredSession } from "@/lib/apiClient";
 import { dashboardRouteForRole } from "@/lib/authFlow";
 import { loadMe } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -24,10 +25,7 @@ export default function LandingAuthCheck({
     if (checkStarted.current || status === "authenticated") return;
     checkStarted.current = true;
 
-    const hasStoredSession = Boolean(
-      localStorage.getItem("accessToken") || localStorage.getItem("refreshToken"),
-    );
-    if (hasStoredSession) {
+    if (hasStoredSession()) {
       returningSession.current = true;
       void dispatch(loadMe());
     }

@@ -24,6 +24,8 @@ import {
   updateSkill,
 } from "@/store/skillsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
 import Pagination from "@/components/ui/Pagination";
 import { skillDescriptions, skillLabels } from "@/lib/skillPresentation";
 
@@ -54,6 +56,7 @@ export default function SkillsDashboard() {
   const [editing, setEditing] = useState<Skill | null>(null);
   const [name, setName] = useState<SkillName>("listening");
   const [order, setOrder] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<Skill | null>(null);
 
   useEffect(() => {
     void dispatch(fetchSkills(1));
@@ -100,16 +103,14 @@ export default function SkillsDashboard() {
     }
   }
 
-  async function remove(skill: Skill) {
-    const confirmed = window.confirm(
-      `آیا از حذف مهارت «${skillLabels[skill.name]}» مطمئن هستید؟`,
-    );
-    if (!confirmed) return;
-
+  async function confirmDelete() {
+    if (!pendingDelete) return;
     try {
-      await dispatch(deleteSkill(skill.id)).unwrap();
+      await dispatch(deleteSkill(pendingDelete.id)).unwrap();
     } catch {
       // The rejected thunk stores the API message for the page.
+    } finally {
+      setPendingDelete(null);
     }
   }
 
@@ -154,7 +155,7 @@ export default function SkillsDashboard() {
       )}
 
       {listStatus === "succeeded" && items.length === 0 && (
-        <EmptyState canManage={canManage} onCreate={openCreateForm} />
+        <SkillsEmptyState canManage={canManage} onCreate={openCreateForm} />
       )}
 
       {listStatus === "succeeded" && items.length > 0 && (
@@ -173,7 +174,7 @@ export default function SkillsDashboard() {
                   mutationStatus === "loading" && editing?.id !== skill.id
                 }
                 onEdit={() => openEditForm(skill)}
-                onDelete={() => void remove(skill)}
+                onDelete={() => setPendingDelete(skill)}
               />
             ))}
           </div>
@@ -189,6 +190,24 @@ export default function SkillsDashboard() {
             ariaLabel="صفحه‌بندی مهارت‌ها"
           />
         </>
+      )}
+
+      {canManage && (
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          tone="danger"
+          title="حذف مهارت"
+          description={
+            pendingDelete
+              ? `مهارت «${skillLabels[pendingDelete.name]}» حذف می‌شود و این کار برگشت‌پذیر نیست.`
+              : undefined
+          }
+          confirmLabel="بله، حذف شود"
+          loadingLabel="در حال حذف..."
+          loading={mutationStatus === "loading"}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
 
       {formOpen && canManage && (
@@ -393,7 +412,7 @@ function LoadingState() {
   );
 }
 
-function EmptyState({
+function SkillsEmptyState({
   canManage,
   onCreate,
 }: {
@@ -401,25 +420,22 @@ function EmptyState({
   onCreate: () => void;
 }) {
   return (
-    <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
-      <FaBookOpen
-        className="mx-auto text-4xl text-muted-foreground"
-        aria-hidden="true"
-      />
-      <h2 className="mt-4 text-xl font-black">مهارتی ثبت نشده است</h2>
-      <p className="mt-2 text-muted-foreground">
-        در حال حاضر موردی برای نمایش وجود ندارد.
-      </p>
-      {canManage && (
-        <button
-          type="button"
-          onClick={onCreate}
-          className="brand-button mt-5 rounded-xl px-5 py-3"
-        >
-          افزودن اولین مهارت
-        </button>
-      )}
-    </div>
+    <EmptyState
+      icon={FaBookOpen}
+      title="مهارتی ثبت نشده است"
+      description="در حال حاضر موردی برای نمایش وجود ندارد."
+      action={
+        canManage && (
+          <button
+            type="button"
+            onClick={onCreate}
+            className="brand-button rounded-xl px-5 py-3"
+          >
+            افزودن اولین مهارت
+          </button>
+        )
+      }
+    />
   );
 }
 

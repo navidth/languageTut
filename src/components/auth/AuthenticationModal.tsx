@@ -3,26 +3,40 @@
 import {
   FormEvent,
   KeyboardEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { Alert, Modal } from "flowbite-react";
 import {
-  Alert,
-  Modal,
-  ModalBody,
-  ModalHeader,
-  Spinner,
-} from "flowbite-react";
-import { HiChatAlt, HiDeviceMobile, HiEye, HiEyeOff, HiLockClosed, HiMail, HiUser } from "react-icons/hi";
+  HiArrowLeft,
+  HiChatAlt,
+  HiDeviceMobile,
+  HiLockClosed,
+  HiMail,
+  HiUser,
+  HiX,
+} from "react-icons/hi";
+import OtpInput from "@/components/ui/OtpInput";
+import { LoadingContent } from "@/components/ui/PulseLoader";
+import SegmentedControl, { type SegmentedOption } from "@/components/ui/SegmentedControl";
+import AuthBrandPanel from "./AuthBrandPanel";
+import {
+  authInputClassName,
+  authLinkButtonClassName,
+  fieldDescription,
+  FormField,
+  PasswordToggle,
+} from "./AuthFormFields";
 import {
   authApi,
   normalizeIranianMobile,
   toLatinDigits,
   type User,
 } from "@/lib/auth";
-import { getApiErrorMessage } from "@/lib/apiErrors";
-import type { AuthenticationMode } from "@/lib/authFlow";
+import { getApiErrorMessage, normalizeApiError } from "@/lib/apiErrors";
+import type { AuthDialogView, AuthenticationMode } from "@/lib/authFlow";
 import { login, register } from "@/store/authSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { useAuthFeatures } from "./useAuthFeatures";
@@ -40,32 +54,68 @@ type FieldName =
   | "code"
   | "newPassword";
 type FieldErrors = Partial<Record<FieldName, string>>;
+/** Where a recovery code goes: email always works, SMS only when it is on. */
+type RecoveryChannel = "email" | "sms";
 
 type AuthenticationModalProps = {
   open: boolean;
   profileError: string;
+  /** The login screen to open on; recovery links ask for "forgot". */
+  initialView?: AuthDialogView;
   onClose: () => void;
   onAuthenticated: (user: User, mode: AuthenticationMode) => void;
 };
 
+const INVALID_CODE = "کد واردشده درست نیست یا منقضی شده است.";
+
+/**
+ * Puts a rejected reset confirmation under the field it is about. Returns
+ * null when the error belongs to neither the code nor the new password.
+ */
+function resetFieldErrors(error: unknown): FieldErrors | null {
+  const apiError = normalizeApiError(error);
+  if (apiError.status !== 400) return null;
+  const fields: FieldErrors = {};
+  if (apiError.fieldErrors.code) fields.code = INVALID_CODE;
+  const passwordMessage = apiError.fieldErrors.new_password?.[0];
+  if (passwordMessage) fields.newPassword = passwordMessage;
+  return Object.keys(fields).length ? fields : null;
+}
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const codePattern = /^\d{4,8}$/;
-const inputClassName = "w-full rounded-2xl border border-border bg-secondary-soft/35 py-3.5 text-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.55)] placeholder:text-muted-foreground/75 hover:border-brand-secondary/45 focus:border-brand-accent focus:bg-card focus:ring-4 focus:ring-accent-soft dark:shadow-none";
-const linkButtonClassName = "brand-link text-sm font-bold";
+/**
+ * Boxes shown for an emailed or texted code. The API accepts 4 to 8 digits
+ * and does not say which it sends; 6 is the usual length. Shorter codes still
+ * submit, since validation follows `codePattern`.
+ */
+const CODE_LENGTH = 6;
 
 const MOBILE_ERROR = "شماره موبایل معتبر نیست. نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹";
 
-/** Heading and lead for each screen; recovery copy depends on SMS being on. */
-function screenCopy(screen: "signup" | LoginView, smsEnabled: boolean): [string, string] {
+/** Heading and lead for each screen; recovery copy follows its step and channel. */
+function screenCopy(
+  screen: "signup" | LoginView,
+  smsEnabled: boolean,
+  recovery: { codeSent: boolean; channel: RecoveryChannel },
+): [string, string] {
   switch (screen) {
     case "signup":
       return ["حسابت را بساز", "فقط چند قدم تا شروع مسیر یادگیری شخصی تو باقی مانده است."];
     case "code":
       return ["خوش برگشتی!", "کد یک‌بار مصرف به شماره موبایلت پیامک می‌شود."];
     case "forgot":
+      if (recovery.codeSent) {
+        return [
+          "رمز عبور جدید بساز",
+          recovery.channel === "email"
+            ? "کدی را که به ایمیلت فرستادیم وارد کن و رمز عبور تازه‌ای انتخاب کن."
+            : "کدی را که برایت پیامک کردیم وارد کن و رمز عبور تازه‌ای انتخاب کن.",
+        ];
+      }
       return smsEnabled
-        ? ["بازیابی رمز عبور", "ایمیل یا شماره موبایل حسابت را وارد کن تا لینک یا کد بازیابی برایت فرستاده شود."]
-        : ["بازیابی رمز عبور", "ایمیل حسابت را وارد کن تا لینک تغییر رمز عبور برایت فرستاده شود."];
+        ? ["بازیابی رمز عبور", "ایمیل یا شماره موبایل حسابت را وارد کن تا کد بازیابی برایت فرستاده شود."]
+        : ["بازیابی رمز عبور", "ایمیل حسابت را وارد کن تا کد بازیابی برایت فرستاده شود."];
     default:
       return ["خوش برگشتی!", "با ایمیل یا شماره موبایل و رمز عبورت وارد شو."];
   }
@@ -74,6 +124,7 @@ function screenCopy(screen: "signup" | LoginView, smsEnabled: boolean): [string,
 export default function AuthenticationModal({
   open,
   profileError,
+  initialView = "password",
   onClose,
   onAuthenticated,
 }: AuthenticationModalProps) {
@@ -99,11 +150,30 @@ export default function AuthenticationModal({
   const [notice, setNotice] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const initialFocusTimerRef = useRef<number | null>(null);
+  // A field asked to take focus. It may only appear on the next render (the
+  // code field after "send code"), and the submit button drops focus to the
+  // page while it is disabled, so the request waits until the field exists.
+  const pendingFocusRef = useRef<string | null>(null);
+
+  const applyPendingFocus = useCallback(() => {
+    const id = pendingFocusRef.current;
+    const field = id ? document.getElementById(id) : null;
+    if (!field) return;
+    pendingFocusRef.current = null;
+    field.focus();
+  }, []);
+
+  useEffect(applyPendingFocus);
+
+  function focusField(id: string) {
+    pendingFocusRef.current = id;
+    window.setTimeout(applyPendingFocus, 0);
+  }
 
   useEffect(() => {
     if (!open) return;
     setTab("login");
-    setLoginView("password");
+    setLoginView(initialView);
     setCodeSent(false);
     setNotice("");
     setFormError(profileError);
@@ -115,7 +185,7 @@ export default function AuthenticationModal({
         window.clearTimeout(initialFocusTimerRef.current);
       }
     };
-  }, [open, profileError]);
+  }, [open, profileError, initialView]);
 
   useEffect(() => {
     if (!open) return;
@@ -140,14 +210,14 @@ export default function AuthenticationModal({
     resetMessages();
   }
 
-  function selectLoginView(nextView: LoginView) {
+  function selectLoginView(nextView: LoginView, { focusField = true } = {}) {
     if (submitting) return;
     setLoginView(nextView);
     setCodeSent(false);
     setCode("");
     setPassword("");
     resetMessages();
-    window.setTimeout(() => firstInputRef.current?.focus(), 0);
+    if (focusField) window.setTimeout(() => firstInputRef.current?.focus(), 0);
   }
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -218,6 +288,10 @@ export default function AuthenticationModal({
     await finishLogin(login({ phone_number: phoneNumber, code: loginCode }), "login");
   }
 
+  /**
+   * Recovery in two steps: send a code to the account's email (or phone, when
+   * SMS is on), then confirm it with a new password and sign straight in.
+   */
   async function submitForgot() {
     const errors: FieldErrors = {};
     // Without SMS the only recovery channel is email.
@@ -227,34 +301,55 @@ export default function AuthenticationModal({
         ? { email: identifier.trim() }
         : null;
     if (!smsEnabled && !account) errors.identifier = "یک ایمیل معتبر وارد کنید.";
+    const resetCode = toLatinDigits(code.trim());
     if (codeSent) {
-      if (!codePattern.test(toLatinDigits(code.trim()))) errors.code = "کد پیامک‌شده را وارد کنید.";
+      if (!codePattern.test(resetCode)) errors.code = "کد بازیابی را وارد کنید.";
       validatePassword(errors, "newPassword", true);
     }
     setFieldErrors(errors);
     if (!account || Object.keys(errors).length) return;
 
-    if ("email" in account) {
-      await authApi.requestPasswordReset(account.email);
-      setNotice("اگر حسابی با این ایمیل وجود داشته باشد، لینک تغییر رمز عبور برایش ارسال شد.");
-      return;
-    }
     if (!codeSent) {
-      await authApi.requestSmsPasswordReset(account.phone_number);
+      if ("email" in account) {
+        await authApi.requestEmailPasswordReset(account.email);
+        setNotice("اگر حسابی با این ایمیل وجود داشته باشد، کد بازیابی به آن فرستاده شد. اگر پیدایش نکردی، پوشه اسپم را هم ببین.");
+      } else {
+        await authApi.requestSmsPasswordReset(account.phone_number);
+        setNotice("اگر این شماره حساب داشته باشد، کد بازیابی برایش پیامک شد.");
+      }
       setCodeSent(true);
-      setNotice("اگر این شماره حساب داشته باشد، کد بازیابی برایش پیامک شد.");
+      focusField("auth-code");
       return;
     }
-    await authApi.confirmSmsPasswordReset({
-      phone_number: account.phone_number,
-      code: toLatinDigits(code.trim()),
-      new_password: confirmPassword,
-    });
-    setLoginView("password");
-    setCodeSent(false);
-    setCode("");
-    setConfirmPassword("");
-    setNotice("رمز عبور تغییر کرد. با رمز جدید وارد شوید.");
+
+    const newPassword = confirmPassword;
+    try {
+      if ("email" in account) {
+        await authApi.confirmEmailPasswordReset({ email: account.email, code: resetCode, new_password: newPassword });
+      } else {
+        await authApi.confirmSmsPasswordReset({ phone_number: account.phone_number, code: resetCode, new_password: newPassword });
+      }
+    } catch (error) {
+      const fields = resetFieldErrors(error);
+      if (!fields) throw error;
+      setFieldErrors(fields);
+      focusField(fields.code ? "auth-code" : "auth-new-password");
+      return;
+    }
+
+    // Ownership of the account is proven, so sign in with the new password
+    // instead of asking for it again.
+    try {
+      await finishLogin(login({ ...account, password: newPassword }), "login");
+    } catch {
+      setLoginView("password");
+      setCodeSent(false);
+      setCode("");
+      setConfirmPassword("");
+      setPassword("");
+      setNotice("رمز عبور تغییر کرد. با رمز جدید وارد شوید.");
+      focusField("auth-password");
+    }
   }
 
   async function submitSignup() {
@@ -311,18 +406,22 @@ export default function AuthenticationModal({
     onClose();
   }
 
-  const [heading, subheading] = screenCopy(tab === "signup" ? "signup" : loginView, smsEnabled);
-  const submitLabel = submitting
-    ? "در حال بررسی..."
-    : tab === "signup"
+  const recoveryChannel: RecoveryChannel =
+    !smsEnabled || identifier.includes("@") ? "email" : "sms";
+  const [heading, subheading] = screenCopy(tab === "signup" ? "signup" : loginView, smsEnabled, {
+    codeSent,
+    channel: recoveryChannel,
+  });
+  // Stays the action's name while submitting; the dots cover it then.
+  const submitLabel = tab === "signup"
       ? "ساخت حساب و ادامه"
       : loginView === "password"
         ? "ورود و ادامه"
         : loginView === "code"
           ? codeSent ? "ورود و ادامه" : "ارسال کد ورود"
-          : !smsEnabled
-            ? "ارسال لینک بازیابی"
-            : codeSent ? "تغییر رمز عبور" : "ارسال لینک یا کد بازیابی";
+          : codeSent ? "تغییر رمز و ورود" : "ارسال کد بازیابی";
+  // The code screen names where the code went.
+  const emailedCode = loginView === "forgot" && recoveryChannel === "email";
   // Recovery without SMS goes by email only, so the field asks for just that.
   const emailOnlyIdentifier = loginView === "forgot" && !smsEnabled;
 
@@ -338,7 +437,7 @@ export default function AuthenticationModal({
         autoComplete={tab === "login" ? "current-password" : "new-password"}
         aria-invalid={Boolean(fieldErrors.password)}
         aria-describedby={fieldErrors.password ? "auth-password-error" : undefined}
-        className={`${inputClassName} pe-11 ps-12 text-left`}
+        className={`${authInputClassName} pe-11 ps-12 text-left`}
       />
       <PasswordToggle visible={passwordVisible} onToggle={() => setPasswordVisible((current) => !current)} />
     </FormField>
@@ -359,7 +458,7 @@ export default function AuthenticationModal({
         readOnly={tab === "login" && codeSent}
         aria-invalid={Boolean(fieldErrors.phone)}
         aria-describedby={fieldErrors.phone ? "auth-phone-error" : undefined}
-        className={`${inputClassName} pe-4 ps-11 text-left`}
+        className={`${authInputClassName} pe-4 ps-11 text-left`}
         placeholder="09123456789"
       />
     </FormField>
@@ -385,25 +484,39 @@ export default function AuthenticationModal({
         readOnly={loginView === "forgot" && codeSent}
         aria-invalid={Boolean(fieldErrors.identifier)}
         aria-describedby={fieldErrors.identifier ? "auth-identifier-error" : undefined}
-        className={`${inputClassName} pe-4 ps-11 text-left`}
+        className={`${authInputClassName} pe-4 ps-11 text-left`}
         placeholder={emailOnlyIdentifier ? "name@example.com" : "name@example.com / 09123456789"}
       />
     </FormField>
   );
 
   const codeField = (
-    <FormField id="auth-code" label="کد پیامک‌شده" icon={HiChatAlt} error={fieldErrors.code}>
-      <input
+    <FormField
+      id="auth-code"
+      label={emailedCode ? "کد ارسال‌شده به ایمیل" : "کد پیامک‌شده"}
+      error={fieldErrors.code}
+    >
+      <OtpInput
         id="auth-code"
-        lang="en"
-        dir="ltr"
+        length={CODE_LENGTH}
         value={code}
-        onChange={(event) => setCode(event.target.value)}
-        autoComplete="one-time-code"
-        inputMode="numeric"
-        aria-invalid={Boolean(fieldErrors.code)}
+        onValueChange={(next) => {
+          setCode(next);
+          // Typing a new code clears the red boxes from a rejected one.
+          if (fieldErrors.code) {
+            setFieldErrors((current) => {
+              const next = { ...current };
+              delete next.code;
+              return next;
+            });
+          }
+        }}
+        // A full code moves on: to the new password when resetting, to the
+        // submit button when signing in with a texted code.
+        onComplete={() => focusField(loginView === "forgot" ? "auth-new-password" : "auth-submit")}
+        invalid={Boolean(fieldErrors.code)}
+        disabled={submitting}
         aria-describedby={fieldErrors.code ? "auth-code-error" : undefined}
-        className={`${inputClassName} pe-4 ps-11 text-left tracking-[0.3em]`}
       />
     </FormField>
   );
@@ -415,81 +528,97 @@ export default function AuthenticationModal({
       // Without this the modal's focus trap may focus the first tab after the
       // timer above has focused the first field.
       initialFocus={firstInputRef}
-      size="2xl"
+      size="4xl"
       onClose={() => !submitting && closeModal()}
       dir="rtl"
-      className="backdrop-blur-[2px] [&>div]:!max-w-2xl [&>div>div]:!overflow-hidden [&>div>div]:!rounded-[2rem] [&>div>div]:!border [&>div>div]:!border-brand-secondary/20 [&>div>div]:!bg-card [&>div>div]:shadow-[0_28px_80px_rgb(19_9_18/0.28)]"
+      className="bg-brand-primary/60! backdrop-blur-[3px] [&>div>div]:animate-in [&>div>div]:overflow-hidden! [&>div>div]:rounded-[2rem]! [&>div>div]:border! [&>div>div]:border-brand-secondary/20! [&>div>div]:bg-card! [&>div>div]:fill-mode-both [&>div>div]:fade-in [&>div>div]:zoom-in-95 [&>div>div]:duration-300 [&>div>div]:ease-out [&>div>div]:shadow-[0_28px_80px_rgb(19_9_18/0.35)] [&>div>div]:slide-in-from-bottom-3"
     >
-      <ModalHeader
-        as="div"
-        className="relative !flex !w-full !items-center !gap-4 border-b border-border bg-gradient-to-b from-secondary-soft/80 to-card px-5 pb-0 pt-4 text-foreground sm:px-8 sm:pt-5 [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1 [&>button]:mb-3 [&>button]:shrink-0 [&>button]:rounded-full [&>button]:border [&>button]:border-border [&>button]:bg-card [&>button]:p-2 [&>button]:text-muted-foreground [&>button:hover]:border-brand-secondary/40 [&>button:hover]:bg-secondary-soft [&>button:hover]:text-foreground"
-      >
-        <h2 className="sr-only">ورود یا ثبت‌نام</h2>
-        <div
-          role="tablist"
-          aria-label="ورود یا ساخت حساب"
-          className="flex w-full items-end gap-8 sm:gap-11"
-        >
-          <TabButton
-            id="auth-tab-login"
-            panelId="auth-panel-login"
-            selected={tab === "login"}
-            onClick={() => selectTab("login")}
-            onKeyDown={handleTabKeyDown}
-          >
-            ورود
-          </TabButton>
-          <TabButton
-            id="auth-tab-signup"
-            panelId="auth-panel-signup"
-            selected={tab === "signup"}
-            onClick={() => selectTab("signup")}
-            onKeyDown={handleTabKeyDown}
-          >
-            ثبت‌نام
-          </TabButton>
-        </div>
-      </ModalHeader>
-      <ModalBody className="!overflow-visible bg-card p-0 text-foreground">
-        <div
-          id={tab === "login" ? "auth-panel-login" : "auth-panel-signup"}
-          role="tabpanel"
-          aria-labelledby={tab === "login" ? "auth-tab-login" : "auth-tab-signup"}
-          className="animate-in fade-in p-5 duration-200 sm:p-8"
-        >
-          <div className="mb-6">
-            <h3 className="text-xl font-black tracking-tight text-foreground sm:text-2xl">
-              {heading}
-            </h3>
-            <p className="mt-2 text-sm leading-7 text-muted-foreground">{subheading}</p>
+      <h2 className="sr-only">ورود یا ثبت‌نام</h2>
+      {/* Form first in the DOM (the start side in RTL), brand panel at the end. */}
+      {/* The form column scrolls on its own, so the brand panel stays put. */}
+      <div className="grid max-h-[90dvh] text-foreground md:grid-cols-[minmax(0,1fr)_17rem] lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="flex min-h-0 max-h-[90dvh] flex-col">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-linear-to-b from-secondary-soft/80 to-card px-5 pt-4 sm:px-8 sm:pt-5">
+            <div
+              role="tablist"
+              aria-label="ورود یا ساخت حساب"
+              className="flex min-w-0 items-end gap-8 sm:gap-11"
+            >
+              <TabButton
+                id="auth-tab-login"
+                panelId="auth-panel-login"
+                selected={tab === "login"}
+                onClick={() => selectTab("login")}
+                onKeyDown={handleTabKeyDown}
+              >
+                ورود
+              </TabButton>
+              <TabButton
+                id="auth-tab-signup"
+                panelId="auth-panel-signup"
+                selected={tab === "signup"}
+                onClick={() => selectTab("signup")}
+                onKeyDown={handleTabKeyDown}
+              >
+                ثبت‌نام
+              </TabButton>
+            </div>
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={submitting}
+              aria-label="بستن"
+              className="mb-3 grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-card text-muted-foreground hover:border-brand-secondary/40 hover:bg-secondary-soft hover:text-foreground"
+            >
+              <HiX className="size-5" aria-hidden="true" />
+            </button>
           </div>
 
-          {tab === "login" && smsEnabled && loginView !== "forgot" && (
-            <LoginMethodSwitch
-              value={loginView}
-              disabled={submitting}
-              onChange={selectLoginView}
-            />
-          )}
-
-          {formError && (
-            <Alert color="failure" className="feedback-error mb-5" role="alert">
-              {formError}
-            </Alert>
-          )}
-          {notice && (
-            <p className="feedback-success mb-5 rounded-2xl p-4 text-sm" role="status">
-              {notice}
-            </p>
-          )}
-
-          <form
-            data-testid="authentication-form"
-            className={tab === "signup" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "space-y-4"}
-            onSubmit={handleSubmit}
-            noValidate
-            aria-busy={submitting}
+          <div
+            // Remounts on a tab change, so the panel fades in again.
+            key={tab}
+            id={tab === "login" ? "auth-panel-login" : "auth-panel-signup"}
+            role="tabpanel"
+            aria-labelledby={tab === "login" ? "auth-tab-login" : "auth-tab-signup"}
+            className="animate-in fade-in slide-in-from-bottom-1 min-h-0 overflow-y-auto p-5 duration-300 sm:p-8"
           >
+            <div className="mb-6">
+              <h3 className="text-xl font-black tracking-tight text-foreground sm:text-2xl">
+                {heading}
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">{subheading}</p>
+            </div>
+
+            {tab === "login" && smsEnabled && loginView !== "forgot" && (
+              <SegmentedControl
+                label="روش ورود"
+                options={loginMethods}
+                value={loginView === "code" ? "code" : "password"}
+                disabled={submitting}
+                // Arrow keys move along the switch, so focus stays on it.
+                onChange={(method) => selectLoginView(method, { focusField: false })}
+                className="mb-5"
+              />
+            )}
+
+            {formError && (
+              <Alert color="failure" className="feedback-error mb-5" role="alert">
+                {formError}
+              </Alert>
+            )}
+            {notice && (
+              <p className="feedback-success mb-5 rounded-2xl p-4 text-sm" role="status">
+                {notice}
+              </p>
+            )}
+
+            <form
+              data-testid="authentication-form"
+              className={tab === "signup" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "space-y-4"}
+              onSubmit={handleSubmit}
+              noValidate
+              aria-busy={submitting}
+            >
             {tab === "signup" ? (
               <>
                 <FormField id="auth-full-name" label="نام و نام خانوادگی" icon={HiUser} error={fieldErrors.fullName}>
@@ -501,7 +630,7 @@ export default function AuthenticationModal({
                     autoComplete="name"
                     aria-invalid={Boolean(fieldErrors.fullName)}
                     aria-describedby={fieldErrors.fullName ? "auth-full-name-error" : undefined}
-                    className={`${inputClassName} pe-4 ps-11`}
+                    className={`${authInputClassName} pe-4 ps-11`}
                     placeholder="نام شما"
                   />
                 </FormField>
@@ -517,7 +646,7 @@ export default function AuthenticationModal({
                     inputMode="email"
                     aria-invalid={Boolean(fieldErrors.email)}
                     aria-describedby={fieldErrors.email ? "auth-email-error" : undefined}
-                    className={`${inputClassName} pe-4 ps-11 text-left`}
+                    className={`${authInputClassName} pe-4 ps-11 text-left`}
                     placeholder="name@example.com"
                   />
                 </FormField>
@@ -534,7 +663,7 @@ export default function AuthenticationModal({
                     autoComplete="new-password"
                     aria-invalid={Boolean(fieldErrors.confirmPassword)}
                     aria-describedby={fieldErrors.confirmPassword ? "auth-confirm-password-error" : undefined}
-                    className={`${inputClassName} pe-11 ps-12 text-left`}
+                    className={`${authInputClassName} pe-11 ps-12 text-left`}
                   />
                 </FormField>
               </>
@@ -549,7 +678,13 @@ export default function AuthenticationModal({
                 {codeSent && (
                   <>
                     {codeField}
-                    <FormField id="auth-new-password" label="رمز عبور جدید" icon={HiLockClosed} error={fieldErrors.newPassword}>
+                    <FormField
+                      id="auth-new-password"
+                      label="رمز عبور جدید"
+                      icon={HiLockClosed}
+                      error={fieldErrors.newPassword}
+                      hint="حداقل ۸ کاراکتر"
+                    >
                       <input
                         id="auth-new-password"
                         lang="en"
@@ -559,8 +694,8 @@ export default function AuthenticationModal({
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         autoComplete="new-password"
                         aria-invalid={Boolean(fieldErrors.newPassword)}
-                        aria-describedby={fieldErrors.newPassword ? "auth-new-password-error" : undefined}
-                        className={`${inputClassName} pe-11 ps-12 text-left`}
+                        aria-describedby={fieldDescription("auth-new-password", fieldErrors.newPassword, "حداقل ۸ کاراکتر")}
+                        className={`${authInputClassName} pe-11 ps-12 text-left`}
                       />
                       <PasswordToggle visible={passwordVisible} onToggle={() => setPasswordVisible((current) => !current)} />
                     </FormField>
@@ -574,98 +709,95 @@ export default function AuthenticationModal({
               </>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className={`brand-button flex min-h-13 w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm ${tab === "signup" ? "sm:col-span-2" : ""}`}
-            >
-              {submitting && <Spinner size="sm" className="ms-2" aria-hidden="true" />}
-              {submitLabel}
-            </button>
-          </form>
+              <button
+                id="auth-submit"
+                type="submit"
+                disabled={submitting}
+                aria-busy={submitting}
+                className={`brand-button flex min-h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm ${tab === "signup" ? "sm:col-span-2" : ""}`}
+              >
+                <LoadingContent loading={submitting} label="در حال بررسی">
+                  {submitLabel}
+                  <HiArrowLeft className="size-5" aria-hidden="true" />
+                </LoadingContent>
+              </button>
+            </form>
 
-          {tab === "login" && (loginView !== "code" || codeSent) && (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              {loginView === "password" && (
-                <button type="button" className={linkButtonClassName} onClick={() => selectLoginView("forgot")}>
-                  رمز عبور را فراموش کرده‌ام
-                </button>
+            {tab === "login" && (loginView !== "code" || codeSent) && (
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                {loginView === "password" && (
+                  <button type="button" className={authLinkButtonClassName} onClick={() => selectLoginView("forgot")}>
+                    رمز عبور را فراموش کرده‌ام
+                  </button>
+                )}
+                {loginView === "forgot" && (
+                  <button type="button" className={authLinkButtonClassName} onClick={() => selectLoginView("password")}>
+                    بازگشت به ورود
+                  </button>
+                )}
+                {loginView === "forgot" && codeSent && (
+                  <button
+                    type="button"
+                    className={authLinkButtonClassName}
+                    disabled={submitting}
+                    onClick={() => {
+                      setCodeSent(false);
+                      setCode("");
+                      resetMessages();
+                      focusField("auth-identifier");
+                    }}
+                  >
+                    {recoveryChannel === "email" ? "تغییر ایمیل یا ارسال دوباره کد" : "تغییر شماره یا ارسال دوباره کد"}
+                  </button>
+                )}
+                {loginView === "code" && codeSent && (
+                  <button
+                    type="button"
+                    className={authLinkButtonClassName}
+                    disabled={submitting}
+                    onClick={() => {
+                      setCodeSent(false);
+                      setCode("");
+                      resetMessages();
+                    }}
+                  >
+                    تغییر شماره یا ارسال دوباره کد
+                  </button>
+                )}
+              </div>
+            )}
+
+            <p className="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
+              {tab === "login" ? (
+                <>
+                  حساب کاربری نداری؟{" "}
+                  <button type="button" className={authLinkButtonClassName} onClick={() => selectTab("signup")}>
+                    ساخت حساب جدید
+                  </button>
+                </>
+              ) : (
+                <>
+                  قبلاً حساب ساخته‌ای؟{" "}
+                  <button type="button" className={authLinkButtonClassName} onClick={() => selectTab("login")}>
+                    ورود به حساب
+                  </button>
+                </>
               )}
-              {loginView === "forgot" && (
-                <button type="button" className={linkButtonClassName} onClick={() => selectLoginView("password")}>
-                  بازگشت به ورود
-                </button>
-              )}
-              {loginView === "code" && codeSent && (
-                <button
-                  type="button"
-                  className={linkButtonClassName}
-                  disabled={submitting}
-                  onClick={() => {
-                    setCodeSent(false);
-                    setCode("");
-                    resetMessages();
-                  }}
-                >
-                  تغییر شماره یا ارسال دوباره کد
-                </button>
-              )}
-            </div>
-          )}
+            </p>
+          </div>
         </div>
-      </ModalBody>
+
+        <AuthBrandPanel />
+      </div>
     </Modal>
   );
 }
 
-const loginMethods: { value: "password" | "code"; label: string; icon: typeof HiUser }[] = [
+/** Shown when SMS is on: sign in with a password or with a texted code. */
+const loginMethods: readonly SegmentedOption<"password" | "code">[] = [
   { value: "password", label: "با رمز عبور", icon: HiLockClosed },
   { value: "code", label: "با کد پیامکی", icon: HiChatAlt },
 ];
-
-/** Segmented choice between password and SMS-code login, shown when SMS is on. */
-function LoginMethodSwitch({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: LoginView;
-  disabled: boolean;
-  onChange: (method: "password" | "code") => void;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="روش ورود"
-      className="mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-border bg-secondary-soft/45 p-1"
-    >
-      {loginMethods.map(({ value: method, label, icon: Icon }) => {
-        const selected = value === method;
-        return (
-          <button
-            key={method}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            disabled={disabled}
-            onClick={() => !selected && onChange(method)}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors ${
-              selected
-                ? "bg-card text-foreground shadow-(--shadow-brand-sm)"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon
-              className={`size-4 ${selected ? "text-brand-secondary dark:text-brand-accent" : ""}`}
-              aria-hidden="true"
-            />
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function TabButton({
   id,
@@ -703,51 +835,6 @@ function TabButton({
       }`}
     >
       {children}
-    </button>
-  );
-}
-
-function FormField({
-  id,
-  label,
-  icon: Icon,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  icon: typeof HiUser;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="mb-2 block text-sm font-bold text-foreground/90">
-        {label}
-      </label>
-      <div className="relative">
-        <Icon className="pointer-events-none absolute start-3.5 top-1/2 z-10 size-5 -translate-y-1/2 text-brand-secondary/75 dark:text-brand-accent" aria-hidden="true" />
-        {children}
-      </div>
-      {error && (
-        <p id={`${id}-error`} className="mt-1.5 text-xs text-destructive" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="absolute end-2.5 top-1/2 z-20 -translate-y-1/2 rounded-xl p-2 text-muted-foreground hover:bg-accent-soft hover:text-brand-primary"
-      aria-label={visible ? "پنهان کردن رمز عبور" : "نمایش رمز عبور"}
-      aria-pressed={visible}
-    >
-      {visible ? <HiEyeOff className="size-5" aria-hidden="true" /> : <HiEye className="size-5" aria-hidden="true" />}
     </button>
   );
 }

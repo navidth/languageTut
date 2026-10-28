@@ -1,6 +1,7 @@
 "use client";
 
 import { HiLockClosed } from "react-icons/hi";
+import { LoadingContent } from "@/components/ui/PulseLoader";
 import { useAuthFlow } from "./AuthFlowProvider";
 
 type LoginPromptProps = {
@@ -28,7 +29,9 @@ export default function LoginPrompt({ message, className = "" }: LoginPromptProp
         onClick={() => void startAuthFlow("learning")}
         className="brand-button mt-5 rounded-xl px-5 py-2.5 text-sm"
       >
-        {busy ? "در حال بررسی..." : "ورود به حساب کاربری"}
+        <LoadingContent loading={busy} label="در حال بررسی">
+          ورود به حساب کاربری
+        </LoadingContent>
       </button>
     </div>
   );

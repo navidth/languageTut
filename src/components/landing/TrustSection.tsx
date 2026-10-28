@@ -4,6 +4,7 @@ import {
   HiOutlinePencilAlt,
   HiOutlineVolumeUp,
 } from "react-icons/hi";
+import Reveal from "@/components/ui/Reveal";
 
 const skills = [
   {
@@ -53,7 +54,7 @@ export default function TrustSection() {
       />
 
       <div className="relative mx-auto max-w-6xl">
-        <div className="grid items-end gap-8 lg:grid-cols-[1fr_0.75fr]">
+        <Reveal className="grid items-end gap-8 lg:grid-cols-[1fr_0.75fr]">
           <div>
             <span className="inline-flex rounded-full border border-brand-accent/35 bg-brand-accent/10 px-4 py-2 text-sm font-bold text-brand-accent">
               چهار مهارت، یک مسیر
@@ -69,13 +70,15 @@ export default function TrustSection() {
             پیشرفت واقعی زمانی شکل می‌گیرد که مهارت‌های اصلی در کنار واژگان و
             دستور زبان، هماهنگ با یکدیگر تمرین شوند.
           </p>
-        </div>
+        </Reveal>
 
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {skills.map(
-            ({ icon: Icon, english, persian, text, accent }) => (
-              <article
+            ({ icon: Icon, english, persian, text, accent }, index) => (
+              <Reveal
+                as="article"
                 key={english}
+                delay={index * 90}
                 className="group rounded-[1.75rem] border border-white/10 bg-white/[0.055] p-6 backdrop-blur-sm transition hover:-translate-y-1 hover:border-brand-accent/45 hover:bg-white/[0.085]"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -94,12 +97,15 @@ export default function TrustSection() {
                 </p>
                 <h3 className="mt-1 text-2xl font-black">{persian}</h3>
                 <p className="mt-4 text-sm leading-7 text-white/60">{text}</p>
-              </article>
+              </Reveal>
             ),
           )}
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-white/10 pt-8 text-sm font-semibold text-white/50">
+        <Reveal
+          delay={200}
+          className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-white/10 pt-8 text-sm font-semibold text-white/50"
+        >
           <span>واژگان کاربردی</span>
           <span
             className="size-1.5 rounded-full bg-brand-accent"
@@ -111,7 +117,7 @@ export default function TrustSection() {
             aria-hidden="true"
           />
           <span>تمرین متناسب با سطح</span>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

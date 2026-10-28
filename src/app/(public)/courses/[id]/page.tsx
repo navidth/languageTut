@@ -5,6 +5,7 @@ import { HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
 import CourseBackLink from "@/components/courses/CourseBackLink";
 import CourseStartAction from "@/components/courses/CourseStartAction";
 import MediaGallery from "@/components/media/MediaGallery";
+import EmptyState from "@/components/ui/EmptyState";
 import Pagination from "@/components/ui/Pagination";
 import { BACKEND_BASE_URL } from "@/lib/apiClient";
 import type { Course, Lesson, PaginatedLessons } from "@/lib/courses";
@@ -187,9 +188,12 @@ export default async function CoursePage({ params, searchParams }: Props) {
             <p className="mt-2 text-sm text-muted-foreground">برای مشاهده محتوای دوره وارد شوید یا دسترسی دوره را فعال کنید.</p>
           </div>
         ) : lessons.results.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
-            هنوز درسی برای این دوره منتشر نشده است.
-          </p>
+          <EmptyState
+            icon={HiCollection}
+            headingLevel="h3"
+            title="هنوز درسی منتشر نشده است"
+            description="درس‌های این دوره به‌زودی اضافه می‌شوند."
+          />
         ) : (
           <>
             <ol className="space-y-4">

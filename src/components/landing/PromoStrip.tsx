@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { HiPause, HiPlay, HiSparkles } from "react-icons/hi";
+import Reveal from "@/components/ui/Reveal";
 
 // Monoline "N" in a rounded square, for the partner brand that has no logo
 // file yet.
@@ -57,7 +58,7 @@ export default function PromoStrip() {
       aria-label="برندها و برنامه‌ها"
       className="relative overflow-hidden border-y border-white/10 bg-brand-primary bg-linear-to-l from-brand-primary via-brand-secondary/45 to-brand-primary py-7 text-white sm:py-9"
     >
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 sm:px-6">
+      <Reveal className="mx-auto flex max-w-6xl items-center gap-4 px-4 sm:px-6">
         <div className="group min-w-0 flex-1 overflow-hidden mask-[linear-gradient(to_left,transparent,#000_10%,#000_90%,transparent)]">
           {/* In this right-to-left layout the track overflows to the left, so
               it slides right to bring its second half in. The halves are
@@ -96,7 +97,7 @@ export default function PromoStrip() {
         >
           {paused ? <HiPlay className="size-4" aria-hidden="true" /> : <HiPause className="size-4" aria-hidden="true" />}
         </button>
-      </div>
+      </Reveal>
     </section>
   );
 }

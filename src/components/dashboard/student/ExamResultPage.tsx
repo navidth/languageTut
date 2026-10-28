@@ -9,6 +9,7 @@ import {
   useSessionState,
 } from "@/components/auth/useSessionState";
 import PageMessage from "@/components/ui/PageMessage";
+import ProgressRing from "@/components/ui/ProgressRing";
 import { Skeleton } from "@/components/ui/Skeleton";
 import StatusBadge, { toneTextClasses } from "@/components/ui/StatusBadge";
 import { formatPersianDateTime } from "@/lib/date";
@@ -491,46 +492,17 @@ const QuestionResultCard = memo(function QuestionResultCard({
 });
 
 function ScoreRing({ percentage }: { percentage: number | null }) {
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const label =
-    percentage === null ? "—" : `${formatDecimal(percentage)}٪`;
+  const label = percentage === null ? "—" : `${formatDecimal(percentage)}٪`;
 
   return (
-    <div
-      className="relative mx-auto size-36"
-      role="img"
-      aria-label={percentage === null ? "درصد نامشخص" : `درصد: ${label}`}
+    <ProgressRing
+      value={percentage}
+      label={percentage === null ? "درصد نامشخص" : `درصد: ${label}`}
+      caption="درصد"
+      className="mx-auto size-36"
     >
-      <svg viewBox="0 0 120 120" className="size-full -rotate-90">
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth="10"
-        />
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="var(--brand-accent)"
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - (percentage ?? 0) / 100)}
-          className="transition-all duration-700 ease-out"
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center">
-        <div>
-          <p className="text-2xl font-black">{label}</p>
-          <p className="text-xs text-muted-foreground">درصد</p>
-        </div>
-      </div>
-    </div>
+      {label}
+    </ProgressRing>
   );
 }
 

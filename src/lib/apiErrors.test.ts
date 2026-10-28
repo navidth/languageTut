@@ -73,6 +73,19 @@ describe("API error handling", () => {
     }))).toBe("شما اجازه انجام این عملیات را ندارید.");
   });
 
+  it.each([
+    ["Invalid or expired code.", "کد واردشده درست نیست یا منقضی شده است."],
+    ["The reset link is invalid or has expired.", "این لینک بازیابی معتبر نیست یا منقضی شده است."],
+    ["This password is too common.", "این رمز عبور بیش از حد رایج است. رمز دیگری انتخاب کنید."],
+    ["This password is entirely numeric.", "رمز عبور نباید فقط از عدد تشکیل شده باشد."],
+    ["The password is too similar to the email address.", "رمز عبور بیش از حد به اطلاعات حساب شما شبیه است."],
+    ["Ensure this field has at least 8 characters.", "حداقل ۸ کاراکتر لازم است."],
+  ])("localizes the reset message %j", (message, expected) => {
+    const error = normalizeApiError(responseError(400, { new_password: [message] }));
+
+    expect(error.fieldErrors.new_password).toEqual([expected]);
+  });
+
   it("maps 200 and 201 success responses", () => {
     expect(getApiSuccessMessage(200)).toBe("عملیات با موفقیت انجام شد.");
     expect(getApiSuccessMessage(201)).toBe("اطلاعات با موفقیت ثبت شد.");

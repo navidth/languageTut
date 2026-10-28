@@ -3,6 +3,8 @@ import { ROUTES } from "./routes";
 
 export type AuthIntent = "learning" | "placement";
 export type AuthenticationMode = "login" | "signup";
+/** The screen the sign-in dialog opens on. */
+export type AuthDialogView = "password" | "forgot";
 
 const VALID_LEVELS = new Set<CurrentLevel>([
   "A1",

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "flowbite-react";
+import { LoadingContent } from "@/components/ui/PulseLoader";
 import type { AuthIntent } from "@/lib/authFlow";
 import { useAuthFlow } from "./AuthFlowProvider";
 
@@ -29,7 +30,9 @@ export default function AuthModalButton({
     <Button
       color={color}
       pill={pill}
-      className={`${color === "light" ? "brand-button-inverse" : "brand-button"} ${className ?? ""}`}
+      // `font-bold` replaces the theme's `font-medium`, which otherwise
+      // outranks the weight set by `.brand-button`.
+      className={`${color === "light" ? "brand-button-inverse" : "brand-button"} max-[370px]:text-xs max-[370px]:p-4 max-[370px]:whitespace-nowrap! font-semibold cursor-pointer ${className ?? ""}`}
       fullSized={fullWidth}
       disabled={busy}
       aria-busy={busy}
@@ -38,7 +41,9 @@ export default function AuthModalButton({
         void startAuthFlow(intent);
       }}
     >
-      {busy ? "در حال بررسی..." : children}
+      <LoadingContent loading={busy} label="در حال بررسی">
+        {children}
+      </LoadingContent>
     </Button>
   );
 }

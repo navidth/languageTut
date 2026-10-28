@@ -9,7 +9,7 @@ import {
   type User,
   type UserRequest,
 } from "@/lib/auth";
-import { clearAuthStorage } from "@/lib/apiClient";
+import { clearAuthStorage, getStoredRefreshToken, storeTokens } from "@/lib/apiClient";
 import { getApiErrorMessage, normalizeApiError, type ApiFieldErrors } from "@/lib/apiErrors";
 import { isCacheFresh } from "@/lib/cache";
 
@@ -69,8 +69,7 @@ function persistUser(user: User) {
 }
 
 function persistSession(access: string, refresh: string, user: User) {
-  localStorage.setItem("accessToken", access);
-  localStorage.setItem("refreshToken", refresh);
+  storeTokens(access, refresh);
   persistUser(user);
 }
 
@@ -211,7 +210,7 @@ export const { logout } = authSlice.actions;
 
 /** Signs out locally at once, then asks the server to revoke the refresh token. */
 export const signOut = createAsyncThunk("auth/signOut", async (_, api) => {
-  const refresh = localStorage.getItem("refreshToken");
+  const refresh = getStoredRefreshToken();
   api.dispatch(logout());
   if (refresh) await authApi.logout(refresh).catch(() => undefined);
 });
