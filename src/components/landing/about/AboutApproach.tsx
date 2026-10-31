@@ -1,34 +1,8 @@
 import Link from "next/link";
 import {
   HiArrowLeft,
-  HiOutlineAdjustments,
-  HiOutlineChartBar,
-  HiOutlineClipboardCheck,
-  HiOutlineLightningBolt,
 } from "react-icons/hi";
-
-const steps = [
-  {
-    icon: HiOutlineClipboardCheck,
-    title: "سنجش",
-    text: "هر مسیر با شناخت دقیق سطح فعلی آغاز می‌شود، نه با حدس.",
-  },
-  {
-    icon: HiOutlineAdjustments,
-    title: "برنامه",
-    text: "سطح و هدف به مسیری روشن از دوره‌ها و درس‌ها تبدیل می‌شود.",
-  },
-  {
-    icon: HiOutlineLightningBolt,
-    title: "تمرین",
-    text: "تمرین‌ها بر چهار مهارت و نیازهای واقعی هر سطح تمرکز دارند.",
-  },
-  {
-    icon: HiOutlineChartBar,
-    title: "بازخورد",
-    text: "نتیجه‌ها و بازخوردها نشان می‌دهند قدم بعدی چه باشد.",
-  },
-] as const;
+import { aboutApproachSteps } from "@/constants/landing";
 
 export default function AboutApproach() {
   return (
@@ -48,7 +22,7 @@ export default function AboutApproach() {
           {/* Joins the steps on wide screens: the cards cover it, so it shows
               only in the gaps, level with the icons' centres. */}
           <span className="pointer-events-none absolute inset-x-[12.5%] top-15 hidden border-t-2 border-dashed border-brand-accent/50 lg:block" aria-hidden="true" />
-          {steps.map(({ icon: Icon, title, text }, index) => (
+          {aboutApproachSteps.map(({ icon: Icon, title, text }, index) => (
             <li key={title} className="surface-card relative rounded-[1.75rem] p-6 text-center">
               <span className="mx-auto grid size-18 place-items-center rounded-2xl bg-brand-primary text-brand-accent">
                 <Icon className="size-7" aria-hidden="true" />

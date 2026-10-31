@@ -1,16 +1,9 @@
-"use client";
-
 import { HiCheck } from "react-icons/hi";
 import BrandMark from "@/components/ui/BrandMark";
 import FadeInImage from "@/components/ui/FadeInImage";
 // The waiting pose from the character sheet; decorative.
 import waitingPose from "../../../public/images/character/08-waiting.png";
-
-const promises = [
-  "تعیین سطح و مسیر متناسب با هدف شما",
-  "تمرین چهار مهارت در کنار واژگان و گرامر",
-  "مشاهده روند پیشرفت در طول مسیر",
-] as const;
+import { AUTH_BRAND_PROMISES } from "@/constants/auth";
 
 /**
  * Brand side of the sign-in dialog, shown from md up. It repeats the home
@@ -38,7 +31,7 @@ export default function AuthBrandPanel() {
           مسیر شخصی شما برای پیشرفت
         </h3>
         <ul className="mt-5 space-y-3">
-          {promises.map((item) => (
+          {AUTH_BRAND_PROMISES.map((item) => (
             <li key={item} className="flex items-start gap-2.5 text-sm leading-6 text-white/80">
               <HiCheck className="mt-0.5 size-5 shrink-0 text-brand-accent" aria-hidden="true" />
               {item}

@@ -1,9 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { User } from "@/lib/auth";
-import type { AuthenticationMode } from "@/lib/authFlow";
-import { PLACEMENT_SECTION_ID } from "@/lib/routes";
-import AuthFlowProvider, { useAuthFlow } from "./AuthFlowProvider";
+import type { User } from "@/types/auth";
+import type { AuthenticationMode } from "@/types/auth";
+import { PLACEMENT_SECTION_ID } from "@/constants/routes";
+import AuthFlowProvider, { useAuthFlow } from "@/components/auth/AuthFlowProvider";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock("@/store/authSlice", () => ({
   fetchAuthFeatures: vi.fn(() => ({ type: "auth/features" })),
 }));
 
-vi.mock("./AuthenticationModal", () => ({
+vi.mock("@/components/auth/AuthenticationModal", () => ({
   default: ({
     open,
     initialView,

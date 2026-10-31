@@ -1,6 +1,21 @@
 import type { MetadataRoute } from "next";
-import { BACKEND_BASE_URL } from "@/lib/apiClient";
-import type { PaginatedCourses } from "@/lib/courses";
+import { publicCoursesApi } from "@/lib/services/publicCoursesApi";
+import { coursePath } from "@/lib/utils/routes";
+import type { Course } from "@/types/course";
+
+const SITEMAP_REVALIDATE_SECONDS = 3600;
+// A guard against a list that never reports its last page.
+const MAX_COURSE_PAGES = 50;
+
+async function listAllCourses() {
+  const courses: Course[] = [];
+  for (let page = 1; page <= MAX_COURSE_PAGES; page += 1) {
+    const data = await publicCoursesApi.list(page, SITEMAP_REVALIDATE_SECONDS);
+    courses.push(...data.results);
+    if (!data.next) break;
+  }
+  return courses;
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -13,11 +28,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/consultation`, changeFrequency: "monthly", priority: 0.7 },
   ];
   try {
-    const response = await fetch(`${BACKEND_BASE_URL}/api/courses/`, { next: { revalidate: 3600 } });
-    if (!response.ok) return fixed;
-    const data: PaginatedCourses = await response.json();
-    return fixed.concat(data.results.map((course) => ({
-      url: `${baseUrl}/courses/${course.id}`,
+    const courses = await listAllCourses();
+    return fixed.concat(courses.map((course) => ({
+      url: `${baseUrl}${coursePath(course.id)}`,
       lastModified: course.updated_at,
       changeFrequency: "weekly" as const,
       priority: 0.8,

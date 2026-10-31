@@ -13,7 +13,8 @@ import {
 } from "react-icons/hi";
 import CodeInput from "@/components/ui/CodeInput";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Countdown, { useCountdown } from "@/components/ui/Countdown";
+import Countdown from "@/components/ui/Countdown";
+import { useCountdown } from "@/hooks/useCountdown";
 import EmptyState from "@/components/ui/EmptyState";
 import FileDropzone from "@/components/ui/FileDropzone";
 import ProgressRing from "@/components/ui/ProgressRing";

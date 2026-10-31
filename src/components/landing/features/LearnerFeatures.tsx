@@ -1,52 +1,12 @@
 import Link from "next/link";
 import {
   HiArrowLeft,
-  HiOutlineBookOpen,
-  HiOutlineChartPie,
   HiOutlineClipboardCheck,
-  HiOutlineClipboardList,
   HiOutlineCollection,
-  HiOutlineDocumentText,
-  HiOutlineMicrophone,
-  HiOutlinePencilAlt,
-  HiOutlineQuestionMarkCircle,
-  HiOutlineVolumeUp,
 } from "react-icons/hi";
 import AuthModalButton from "@/components/auth/AuthModalButton";
-
-const levels = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
-// The level drawn as "your level" in the illustration.
-const sampleLevel = "B1";
-
-const skills = [
-  { icon: HiOutlineVolumeUp, english: "Listening", persian: "شنیداری" },
-  { icon: HiOutlineMicrophone, english: "Speaking", persian: "گفتاری" },
-  { icon: HiOutlineBookOpen, english: "Reading", persian: "خواندن" },
-  { icon: HiOutlinePencilAlt, english: "Writing", persian: "نوشتاری" },
-] as const;
-
-const tools = [
-  {
-    icon: HiOutlineClipboardList,
-    title: "تکالیف آنلاین",
-    text: "تکلیف هر درس را آنلاین ارسال کنید و وضعیت و نتیجه آن را دنبال کنید.",
-  },
-  {
-    icon: HiOutlineDocumentText,
-    title: "تمرین تستی و کارنامه",
-    text: "آزمون‌های تمرینی بدهید و پس از ارسال، کارنامه پاسخ‌هایتان را مرور کنید.",
-  },
-  {
-    icon: HiOutlineQuestionMarkCircle,
-    title: "بانک سؤال",
-    text: "سؤال‌های تمرینی را یک‌جا ببینید و نقاط نیازمند تقویت را هدفمند تمرین کنید.",
-  },
-  {
-    icon: HiOutlineChartPie,
-    title: "داشبورد پیشرفت",
-    text: "دوره‌ها، تکالیف و روند یادگیری خود را در یک نمای خلاصه دنبال کنید.",
-  },
-] as const;
+import { CEFR_LEVELS } from "@/constants/levels";
+import { FEATURE_SAMPLE_LEVEL, learnerFeatureSkills, learnerFeatureTools } from "@/constants/landing";
 
 export default function LearnerFeatures() {
   return (
@@ -87,8 +47,8 @@ export default function LearnerFeatures() {
                   <span lang="en" dir="ltr" className="latin-code">CEFR</span>
                 </div>
                 <div dir="ltr" className="mt-5 flex h-32 items-end gap-2 sm:gap-3">
-                  {levels.map((level, index) => {
-                    const current = level === sampleLevel;
+                  {CEFR_LEVELS.map((level, index) => {
+                    const current = level === FEATURE_SAMPLE_LEVEL;
                     return (
                       <div key={level} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
                         {current && (
@@ -97,7 +57,7 @@ export default function LearnerFeatures() {
                           </span>
                         )}
                         <span
-                          className={`w-full rounded-t-xl ${current ? "bg-brand-accent" : index < levels.indexOf(sampleLevel) ? "bg-brand-secondary/70 dark:bg-brand-secondary" : "bg-primary-soft"}`}
+                          className={`w-full rounded-t-xl ${current ? "bg-brand-accent" : index < CEFR_LEVELS.indexOf(FEATURE_SAMPLE_LEVEL) ? "bg-brand-secondary/70 dark:bg-brand-secondary" : "bg-primary-soft"}`}
                           style={{ height: `${28 + index * 12}%` }}
                         />
                         <span lang="en" className={`latin-code text-xs font-bold ${current ? "text-foreground" : "text-muted-foreground"}`}>
@@ -124,7 +84,7 @@ export default function LearnerFeatures() {
               <p className="text-sm font-bold text-brand-accent">چهار مهارت اصلی</p>
               <h3 className="mt-2 text-xl font-black sm:text-2xl">مهارت‌ها هماهنگ با هم، نه جدا از هم</h3>
               <ul className="mt-6 grid grid-cols-2 gap-3">
-                {skills.map(({ icon: Icon, english, persian }) => (
+                {learnerFeatureSkills.map(({ icon: Icon, english, persian }) => (
                   <li key={english} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3">
                     <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-accent text-brand-primary">
                       <Icon className="size-5" aria-hidden="true" />
@@ -158,7 +118,7 @@ export default function LearnerFeatures() {
         </div>
 
         <ul className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {tools.map(({ icon: Icon, title, text }) => (
+          {learnerFeatureTools.map(({ icon: Icon, title, text }) => (
             <li key={title} className="surface-card rounded-[1.75rem] p-6">
               <span className="grid size-11 place-items-center rounded-2xl bg-accent-soft text-brand-secondary dark:text-brand-accent">
                 <Icon className="size-6" aria-hidden="true" />

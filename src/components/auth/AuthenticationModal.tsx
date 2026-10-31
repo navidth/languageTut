@@ -11,7 +11,6 @@ import {
 import { Alert, Modal } from "flowbite-react";
 import {
   HiArrowLeft,
-  HiChatAlt,
   HiDeviceMobile,
   HiLockClosed,
   HiMail,
@@ -20,42 +19,43 @@ import {
 } from "react-icons/hi";
 import OtpInput from "@/components/ui/OtpInput";
 import { LoadingContent } from "@/components/ui/PulseLoader";
-import SegmentedControl, { type SegmentedOption } from "@/components/ui/SegmentedControl";
-import AuthBrandPanel from "./AuthBrandPanel";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import AuthBrandPanel from "@/components/auth/AuthBrandPanel";
 import {
   authInputClassName,
+  authFieldPaddingClassName,
+  authPasswordPaddingClassName,
   authLinkButtonClassName,
   fieldDescription,
   FormField,
   PasswordToggle,
 } from "./AuthFormFields";
+import { authApi } from "@/lib/services/authApi";
+import { normalizeIranianMobile, toLatinDigits } from "@/lib/utils/normalize";
+import { type User } from "@/types/auth";
 import {
-  authApi,
-  normalizeIranianMobile,
-  toLatinDigits,
-  type User,
-} from "@/lib/auth";
-import { getApiErrorMessage, normalizeApiError } from "@/lib/apiErrors";
-import type { AuthDialogView, AuthenticationMode } from "@/lib/authFlow";
+  getApiErrorMessage,
+  normalizeApiError,
+} from "@/lib/services/apiErrors";
+import type { AuthDialogView, AuthenticationMode } from "@/types/auth";
 import { login, register } from "@/store/authSlice";
 import { useAppDispatch } from "@/store/hooks";
-import { useAuthFeatures } from "./useAuthFeatures";
-
-type AuthTab = AuthenticationMode;
-/** Login sub-views: password login, SMS-code login and password recovery. */
-type LoginView = "password" | "code" | "forgot";
-type FieldName =
-  | "fullName"
-  | "identifier"
-  | "email"
-  | "phone"
-  | "password"
-  | "confirmPassword"
-  | "code"
-  | "newPassword";
-type FieldErrors = Partial<Record<FieldName, string>>;
-/** Where a recovery code goes: email always works, SMS only when it is on. */
-type RecoveryChannel = "email" | "sms";
+import { useAuthFeatures } from "@/hooks/useAuthFeatures";
+import type {
+  AuthFieldErrors,
+  LoginView,
+  RecoveryChannel,
+  AuthTab,
+} from "@/types/auth";
+import {
+  INVALID_CODE,
+  EMAIL_PATTERN,
+  MOBILE_ERROR,
+  CODE_PATTERN,
+  CODE_LENGTH,
+  LOGIN_METHODS,
+} from "@/constants/auth";
+import { PASSWORD_HINT } from "@/constants/auth";
 
 type AuthenticationModalProps = {
   open: boolean;
@@ -66,32 +66,20 @@ type AuthenticationModalProps = {
   onAuthenticated: (user: User, mode: AuthenticationMode) => void;
 };
 
-const INVALID_CODE = "کد واردشده درست نیست یا منقضی شده است.";
-
 /**
  * Puts a rejected reset confirmation under the field it is about. Returns
  * null when the error belongs to neither the code nor the new password.
  */
-function resetFieldErrors(error: unknown): FieldErrors | null {
+function resetFieldErrors(error: unknown): AuthFieldErrors | null {
   const apiError = normalizeApiError(error);
   if (apiError.status !== 400) return null;
-  const fields: FieldErrors = {};
-  if (apiError.fieldErrors.code) fields.code = INVALID_CODE;
+  const fields: AuthFieldErrors = {};
+  // A rejected code may come as a field error or as the general message.
+  if (apiError.fieldErrors.code || apiError.message === INVALID_CODE) fields.code = INVALID_CODE;
   const passwordMessage = apiError.fieldErrors.new_password?.[0];
   if (passwordMessage) fields.newPassword = passwordMessage;
   return Object.keys(fields).length ? fields : null;
 }
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const codePattern = /^\d{4,8}$/;
-/**
- * Boxes shown for an emailed or texted code. The API accepts 4 to 8 digits
- * and does not say which it sends; 6 is the usual length. Shorter codes still
- * submit, since validation follows `codePattern`.
- */
-const CODE_LENGTH = 6;
-
-const MOBILE_ERROR = "شماره موبایل معتبر نیست. نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹";
 
 /** Heading and lead for each screen; recovery copy follows its step and channel. */
 function screenCopy(
@@ -101,7 +89,10 @@ function screenCopy(
 ): [string, string] {
   switch (screen) {
     case "signup":
-      return ["حسابت را بساز", "فقط چند قدم تا شروع مسیر یادگیری شخصی تو باقی مانده است."];
+      return [
+        "حسابت را بساز",
+        "فقط چند قدم تا شروع مسیر یادگیری شخصی تو باقی مانده است.",
+      ];
     case "code":
       return ["خوش برگشتی!", "کد یک‌بار مصرف به شماره موبایلت پیامک می‌شود."];
     case "forgot":
@@ -114,8 +105,14 @@ function screenCopy(
         ];
       }
       return smsEnabled
-        ? ["بازیابی رمز عبور", "ایمیل یا شماره موبایل حسابت را وارد کن تا کد بازیابی برایت فرستاده شود."]
-        : ["بازیابی رمز عبور", "ایمیل حسابت را وارد کن تا کد بازیابی برایت فرستاده شود."];
+        ? [
+            "بازیابی رمز عبور",
+            "ایمیل یا شماره موبایل حسابت را وارد کن تا کد بازیابی برایت فرستاده شود.",
+          ]
+        : [
+            "بازیابی رمز عبور",
+            "ایمیل حسابت را وارد کن تا کد بازیابی برایت فرستاده شود.",
+          ];
     default:
       return ["خوش برگشتی!", "با ایمیل یا شماره موبایل و رمز عبورت وارد شو."];
   }
@@ -135,7 +132,9 @@ export default function AuthenticationModal({
   const { smsEnabled } = useAuthFeatures();
   // Falls back to password login if SMS is switched off while the code screen is open.
   const loginView: LoginView =
-    selectedLoginView === "code" && !smsEnabled ? "password" : selectedLoginView;
+    selectedLoginView === "code" && !smsEnabled
+      ? "password"
+      : selectedLoginView;
   const [fullName, setFullName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
@@ -148,7 +147,7 @@ export default function AuthenticationModal({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const initialFocusTimerRef = useRef<number | null>(null);
   // A field asked to take focus. It may only appear on the next render (the
   // code field after "send code"), and the submit button drops focus to the
@@ -179,7 +178,10 @@ export default function AuthenticationModal({
     setFormError(profileError);
     setFieldErrors({});
     setPasswordVisible(false);
-    initialFocusTimerRef.current = window.setTimeout(() => firstInputRef.current?.focus(), 80);
+    initialFocusTimerRef.current = window.setTimeout(
+      () => firstInputRef.current?.focus(),
+      80,
+    );
     return () => {
       if (initialFocusTimerRef.current !== null) {
         window.clearTimeout(initialFocusTimerRef.current);
@@ -223,16 +225,28 @@ export default function AuthenticationModal({
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const nextTab = event.key === "Home" ? "login" : event.key === "End" ? "signup" : tab === "login" ? "signup" : "login";
+    const nextTab =
+      event.key === "Home"
+        ? "login"
+        : event.key === "End"
+          ? "signup"
+          : tab === "login"
+            ? "signup"
+            : "login";
     selectTab(nextTab);
-    window.setTimeout(() => document.getElementById(`auth-tab-${nextTab}`)?.focus(), 0);
+    window.setTimeout(
+      () => document.getElementById(`auth-tab-${nextTab}`)?.focus(),
+      0,
+    );
   }
 
   /** An identifier with `@` is an email; anything else must be a mobile number. */
-  function parseIdentifier(errors: FieldErrors): { email: string } | { phone_number: string } | null {
+  function parseIdentifier(
+    errors: AuthFieldErrors,
+  ): { email: string } | { phone_number: string } | null {
     const value = identifier.trim();
     if (value.includes("@")) {
-      if (emailPattern.test(value)) return { email: value };
+      if (EMAIL_PATTERN.test(value)) return { email: value };
       errors.identifier = "یک ایمیل معتبر وارد کنید.";
       return null;
     }
@@ -244,16 +258,26 @@ export default function AuthenticationModal({
     return null;
   }
 
-  function validatePassword(errors: FieldErrors, field: "password" | "newPassword", strict: boolean) {
+  function validatePassword(
+    errors: AuthFieldErrors,
+    field: "password" | "newPassword",
+    strict: boolean,
+  ) {
     const value = field === "password" ? password : confirmPassword;
     if (!value) {
-      errors[field] = field === "password" ? "رمز عبور را وارد کنید." : "رمز عبور جدید را وارد کنید.";
+      errors[field] =
+        field === "password"
+          ? "رمز عبور را وارد کنید."
+          : "رمز عبور جدید را وارد کنید.";
     } else if (strict && value.length < 8) {
       errors[field] = "رمز عبور باید حداقل ۸ کاراکتر باشد.";
     }
   }
 
-  async function finishLogin(action: ReturnType<typeof login>, mode: AuthenticationMode) {
+  async function finishLogin(
+    action: ReturnType<typeof login>,
+    mode: AuthenticationMode,
+  ) {
     const latestUser = await dispatch(action).unwrap();
     setPassword("");
     setConfirmPassword("");
@@ -262,7 +286,7 @@ export default function AuthenticationModal({
   }
 
   async function submitPasswordLogin() {
-    const errors: FieldErrors = {};
+    const errors: AuthFieldErrors = {};
     const account = parseIdentifier(errors);
     validatePassword(errors, "password", false);
     setFieldErrors(errors);
@@ -271,11 +295,12 @@ export default function AuthenticationModal({
   }
 
   async function submitCodeLogin() {
-    const errors: FieldErrors = {};
+    const errors: AuthFieldErrors = {};
     const phoneNumber = normalizeIranianMobile(phone);
     if (!phoneNumber) errors.phone = MOBILE_ERROR;
     const loginCode = toLatinDigits(code.trim());
-    if (codeSent && !codePattern.test(loginCode)) errors.code = "کد پیامک‌شده را وارد کنید.";
+    if (codeSent && !CODE_PATTERN.test(loginCode))
+      errors.code = "کد پیامک‌شده را وارد کنید.";
     setFieldErrors(errors);
     if (!phoneNumber || Object.keys(errors).length) return;
 
@@ -285,7 +310,10 @@ export default function AuthenticationModal({
       setNotice("اگر این شماره حساب داشته باشد، کد ورود برایش پیامک شد.");
       return;
     }
-    await finishLogin(login({ phone_number: phoneNumber, code: loginCode }), "login");
+    await finishLogin(
+      login({ phone_number: phoneNumber, code: loginCode }),
+      "login",
+    );
   }
 
   /**
@@ -293,17 +321,19 @@ export default function AuthenticationModal({
    * SMS is on), then confirm it with a new password and sign straight in.
    */
   async function submitForgot() {
-    const errors: FieldErrors = {};
+    const errors: AuthFieldErrors = {};
     // Without SMS the only recovery channel is email.
     const account = smsEnabled
       ? parseIdentifier(errors)
-      : emailPattern.test(identifier.trim())
+      : EMAIL_PATTERN.test(identifier.trim())
         ? { email: identifier.trim() }
         : null;
-    if (!smsEnabled && !account) errors.identifier = "یک ایمیل معتبر وارد کنید.";
+    if (!smsEnabled && !account)
+      errors.identifier = "یک ایمیل معتبر وارد کنید.";
     const resetCode = toLatinDigits(code.trim());
     if (codeSent) {
-      if (!codePattern.test(resetCode)) errors.code = "کد بازیابی را وارد کنید.";
+      if (!CODE_PATTERN.test(resetCode))
+        errors.code = "کد بازیابی را وارد کنید.";
       validatePassword(errors, "newPassword", true);
     }
     setFieldErrors(errors);
@@ -312,7 +342,9 @@ export default function AuthenticationModal({
     if (!codeSent) {
       if ("email" in account) {
         await authApi.requestEmailPasswordReset(account.email);
-        setNotice("اگر حسابی با این ایمیل وجود داشته باشد، کد بازیابی به آن فرستاده شد. اگر پیدایش نکردی، پوشه اسپم را هم ببین.");
+        setNotice(
+          "اگر حسابی با این ایمیل وجود داشته باشد، کد بازیابی به آن فرستاده شد. اگر پیدایش نکردی، پوشه اسپم را هم ببین.",
+        );
       } else {
         await authApi.requestSmsPasswordReset(account.phone_number);
         setNotice("اگر این شماره حساب داشته باشد، کد بازیابی برایش پیامک شد.");
@@ -325,9 +357,17 @@ export default function AuthenticationModal({
     const newPassword = confirmPassword;
     try {
       if ("email" in account) {
-        await authApi.confirmEmailPasswordReset({ email: account.email, code: resetCode, new_password: newPassword });
+        await authApi.confirmEmailPasswordReset({
+          email: account.email,
+          code: resetCode,
+          new_password: newPassword,
+        });
       } else {
-        await authApi.confirmSmsPasswordReset({ phone_number: account.phone_number, code: resetCode, new_password: newPassword });
+        await authApi.confirmSmsPasswordReset({
+          phone_number: account.phone_number,
+          code: resetCode,
+          new_password: newPassword,
+        });
       }
     } catch (error) {
       const fields = resetFieldErrors(error);
@@ -353,22 +393,27 @@ export default function AuthenticationModal({
   }
 
   async function submitSignup() {
-    const errors: FieldErrors = {};
-    if (fullName.trim().length < 2) errors.fullName = "نام و نام خانوادگی را وارد کنید.";
-    if (!emailPattern.test(email.trim())) errors.email = "یک ایمیل معتبر وارد کنید.";
+    const errors: AuthFieldErrors = {};
+    if (fullName.trim().length < 2)
+      errors.fullName = "نام و نام خانوادگی را وارد کنید.";
+    if (!EMAIL_PATTERN.test(email.trim()))
+      errors.email = "یک ایمیل معتبر وارد کنید.";
     const phoneNumber = normalizeIranianMobile(phone);
     if (!phoneNumber) errors.phone = MOBILE_ERROR;
     validatePassword(errors, "password", true);
-    if (confirmPassword !== password) errors.confirmPassword = "تکرار رمز عبور مطابقت ندارد.";
+    if (confirmPassword !== password)
+      errors.confirmPassword = "تکرار رمز عبور مطابقت ندارد.";
     setFieldErrors(errors);
     if (!phoneNumber || Object.keys(errors).length) return;
 
-    const latestUser = await dispatch(register({
-      email: email.trim(),
-      phone_number: phoneNumber,
-      password,
-      full_name: fullName.trim(),
-    })).unwrap();
+    const latestUser = await dispatch(
+      register({
+        email: email.trim(),
+        phone_number: phoneNumber,
+        password,
+        full_name: fullName.trim(),
+      }),
+    ).unwrap();
     setPassword("");
     setConfirmPassword("");
     onAuthenticated(latestUser, "signup");
@@ -408,25 +453,39 @@ export default function AuthenticationModal({
 
   const recoveryChannel: RecoveryChannel =
     !smsEnabled || identifier.includes("@") ? "email" : "sms";
-  const [heading, subheading] = screenCopy(tab === "signup" ? "signup" : loginView, smsEnabled, {
-    codeSent,
-    channel: recoveryChannel,
-  });
+  const [heading, subheading] = screenCopy(
+    tab === "signup" ? "signup" : loginView,
+    smsEnabled,
+    {
+      codeSent,
+      channel: recoveryChannel,
+    },
+  );
   // Stays the action's name while submitting; the dots cover it then.
-  const submitLabel = tab === "signup"
+  const submitLabel =
+    tab === "signup"
       ? "ساخت حساب و ادامه"
       : loginView === "password"
         ? "ورود و ادامه"
         : loginView === "code"
-          ? codeSent ? "ورود و ادامه" : "ارسال کد ورود"
-          : codeSent ? "تغییر رمز و ورود" : "ارسال کد بازیابی";
+          ? codeSent
+            ? "ورود و ادامه"
+            : "ارسال کد ورود"
+          : codeSent
+            ? "تغییر رمز و ورود"
+            : "ارسال کد بازیابی";
   // The code screen names where the code went.
   const emailedCode = loginView === "forgot" && recoveryChannel === "email";
   // Recovery without SMS goes by email only, so the field asks for just that.
   const emailOnlyIdentifier = loginView === "forgot" && !smsEnabled;
 
   const passwordField = (
-    <FormField id="auth-password" label="رمز عبور" icon={HiLockClosed} error={fieldErrors.password}>
+    <FormField
+      id="auth-password"
+      label="رمز عبور"
+      icon={HiLockClosed}
+      error={fieldErrors.password}
+    >
       <input
         id="auth-password"
         lang="en"
@@ -436,15 +495,25 @@ export default function AuthenticationModal({
         onChange={(event) => setPassword(event.target.value)}
         autoComplete={tab === "login" ? "current-password" : "new-password"}
         aria-invalid={Boolean(fieldErrors.password)}
-        aria-describedby={fieldErrors.password ? "auth-password-error" : undefined}
-        className={`${authInputClassName} pe-11 ps-12 text-left`}
+        aria-describedby={
+          fieldErrors.password ? "auth-password-error" : undefined
+        }
+        className={`${authInputClassName} ${authPasswordPaddingClassName}`}
       />
-      <PasswordToggle visible={passwordVisible} onToggle={() => setPasswordVisible((current) => !current)} />
+      <PasswordToggle
+        visible={passwordVisible}
+        onToggle={() => setPasswordVisible((current) => !current)}
+      />
     </FormField>
   );
 
   const phoneField = (
-    <FormField id="auth-phone" label="شماره موبایل" icon={HiDeviceMobile} error={fieldErrors.phone}>
+    <FormField
+      id="auth-phone"
+      label="شماره موبایل"
+      icon={HiDeviceMobile}
+      error={fieldErrors.phone}
+    >
       <input
         ref={tab === "login" ? firstInputRef : undefined}
         id="auth-phone"
@@ -458,7 +527,7 @@ export default function AuthenticationModal({
         readOnly={tab === "login" && codeSent}
         aria-invalid={Boolean(fieldErrors.phone)}
         aria-describedby={fieldErrors.phone ? "auth-phone-error" : undefined}
-        className={`${authInputClassName} pe-4 ps-11 text-left`}
+        className={`${authInputClassName} ${authFieldPaddingClassName}`}
         placeholder="09123456789"
       />
     </FormField>
@@ -483,9 +552,15 @@ export default function AuthenticationModal({
         autoComplete={emailOnlyIdentifier ? "email" : "username"}
         readOnly={loginView === "forgot" && codeSent}
         aria-invalid={Boolean(fieldErrors.identifier)}
-        aria-describedby={fieldErrors.identifier ? "auth-identifier-error" : undefined}
-        className={`${authInputClassName} pe-4 ps-11 text-left`}
-        placeholder={emailOnlyIdentifier ? "name@example.com" : "name@example.com / 09123456789"}
+        aria-describedby={
+          fieldErrors.identifier ? "auth-identifier-error" : undefined
+        }
+        className={`${authInputClassName} ${authFieldPaddingClassName}`}
+        placeholder={
+          emailOnlyIdentifier
+            ? "name@example.com"
+            : "name@example.com / 09123456789"
+        }
       />
     </FormField>
   );
@@ -513,7 +588,11 @@ export default function AuthenticationModal({
         }}
         // A full code moves on: to the new password when resetting, to the
         // submit button when signing in with a texted code.
-        onComplete={() => focusField(loginView === "forgot" ? "auth-new-password" : "auth-submit")}
+        onComplete={() =>
+          focusField(
+            loginView === "forgot" ? "auth-new-password" : "auth-submit",
+          )
+        }
         invalid={Boolean(fieldErrors.code)}
         disabled={submitting}
         aria-describedby={fieldErrors.code ? "auth-code-error" : undefined}
@@ -579,135 +658,190 @@ export default function AuthenticationModal({
             key={tab}
             id={tab === "login" ? "auth-panel-login" : "auth-panel-signup"}
             role="tabpanel"
-            aria-labelledby={tab === "login" ? "auth-tab-login" : "auth-tab-signup"}
+            aria-labelledby={
+              tab === "login" ? "auth-tab-login" : "auth-tab-signup"
+            }
             className="animate-in fade-in slide-in-from-bottom-1 min-h-0 overflow-y-auto p-5 duration-300 sm:p-8"
           >
             <div className="mb-6">
               <h3 className="text-xl font-black tracking-tight text-foreground sm:text-2xl">
                 {heading}
               </h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{subheading}</p>
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                {subheading}
+              </p>
             </div>
 
             {tab === "login" && smsEnabled && loginView !== "forgot" && (
               <SegmentedControl
                 label="روش ورود"
-                options={loginMethods}
+                options={LOGIN_METHODS}
                 value={loginView === "code" ? "code" : "password"}
                 disabled={submitting}
                 // Arrow keys move along the switch, so focus stays on it.
-                onChange={(method) => selectLoginView(method, { focusField: false })}
+                onChange={(method) =>
+                  selectLoginView(method, { focusField: false })
+                }
                 className="mb-5"
               />
             )}
 
             {formError && (
-              <Alert color="failure" className="feedback-error mb-5" role="alert">
+              <Alert
+                color="failure"
+                className="feedback-error mb-5"
+                role="alert"
+              >
                 {formError}
               </Alert>
             )}
             {notice && (
-              <p className="feedback-success mb-5 rounded-2xl p-4 text-sm" role="status">
+              <p
+                className="feedback-success mb-5 rounded-2xl p-4 text-sm"
+                role="status"
+              >
                 {notice}
               </p>
             )}
 
             <form
               data-testid="authentication-form"
-              className={tab === "signup" ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : "space-y-4"}
+              className={
+                tab === "signup"
+                  ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+                  : "space-y-4"
+              }
               onSubmit={handleSubmit}
               noValidate
               aria-busy={submitting}
             >
-            {tab === "signup" ? (
-              <>
-                <FormField id="auth-full-name" label="نام و نام خانوادگی" icon={HiUser} error={fieldErrors.fullName}>
-                  <input
-                    ref={firstInputRef}
+              {tab === "signup" ? (
+                <>
+                  <FormField
                     id="auth-full-name"
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    autoComplete="name"
-                    aria-invalid={Boolean(fieldErrors.fullName)}
-                    aria-describedby={fieldErrors.fullName ? "auth-full-name-error" : undefined}
-                    className={`${authInputClassName} pe-4 ps-11`}
-                    placeholder="نام شما"
-                  />
-                </FormField>
-                <FormField id="auth-email" label="ایمیل" icon={HiMail} error={fieldErrors.email}>
-                  <input
+                    label="نام و نام خانوادگی"
+                    icon={HiUser}
+                    error={fieldErrors.fullName}
+                  >
+                    <input
+                      ref={firstInputRef}
+                      id="auth-full-name"
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
+                      autoComplete="name"
+                      aria-invalid={Boolean(fieldErrors.fullName)}
+                      aria-describedby={
+                        fieldErrors.fullName
+                          ? "auth-full-name-error"
+                          : undefined
+                      }
+                      className={`${authInputClassName} ${authFieldPaddingClassName}`}
+                      placeholder="نام شما"
+                    />
+                  </FormField>
+                  <FormField
                     id="auth-email"
-                    lang="en"
-                    dir="ltr"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    autoComplete="email"
-                    inputMode="email"
-                    aria-invalid={Boolean(fieldErrors.email)}
-                    aria-describedby={fieldErrors.email ? "auth-email-error" : undefined}
-                    className={`${authInputClassName} pe-4 ps-11 text-left`}
-                    placeholder="name@example.com"
-                  />
-                </FormField>
-                {phoneField}
-                {passwordField}
-                <FormField id="auth-confirm-password" label="تکرار رمز عبور" icon={HiLockClosed} error={fieldErrors.confirmPassword}>
-                  <input
+                    label="ایمیل"
+                    icon={HiMail}
+                    error={fieldErrors.email}
+                  >
+                    <input
+                      id="auth-email"
+                      lang="en"
+                      dir="ltr"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      autoComplete="email"
+                      inputMode="email"
+                      aria-invalid={Boolean(fieldErrors.email)}
+                      aria-describedby={
+                        fieldErrors.email ? "auth-email-error" : undefined
+                      }
+                      className={`${authInputClassName} ${authFieldPaddingClassName}`}
+                      placeholder="name@example.com"
+                    />
+                  </FormField>
+                  {phoneField}
+                  {passwordField}
+                  <FormField
                     id="auth-confirm-password"
-                    lang="en"
-                    dir="ltr"
-                    type={passwordVisible ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    autoComplete="new-password"
-                    aria-invalid={Boolean(fieldErrors.confirmPassword)}
-                    aria-describedby={fieldErrors.confirmPassword ? "auth-confirm-password-error" : undefined}
-                    className={`${authInputClassName} pe-11 ps-12 text-left`}
-                  />
-                </FormField>
-              </>
-            ) : loginView === "code" ? (
-              <>
-                {phoneField}
-                {codeSent && codeField}
-              </>
-            ) : loginView === "forgot" ? (
-              <>
-                {identifierField}
-                {codeSent && (
-                  <>
-                    {codeField}
-                    <FormField
-                      id="auth-new-password"
-                      label="رمز عبور جدید"
-                      icon={HiLockClosed}
-                      error={fieldErrors.newPassword}
-                      hint="حداقل ۸ کاراکتر"
-                    >
-                      <input
+                    label="تکرار رمز عبور"
+                    icon={HiLockClosed}
+                    error={fieldErrors.confirmPassword}
+                  >
+                    <input
+                      id="auth-confirm-password"
+                      lang="en"
+                      dir="ltr"
+                      type={passwordVisible ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                      autoComplete="new-password"
+                      aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                      aria-describedby={
+                        fieldErrors.confirmPassword
+                          ? "auth-confirm-password-error"
+                          : undefined
+                      }
+                      className={`${authInputClassName} ${authPasswordPaddingClassName}`}
+                    />
+                  </FormField>
+                </>
+              ) : loginView === "code" ? (
+                <>
+                  {phoneField}
+                  {codeSent && codeField}
+                </>
+              ) : loginView === "forgot" ? (
+                <>
+                  {identifierField}
+                  {codeSent && (
+                    <>
+                      {codeField}
+                      <FormField
                         id="auth-new-password"
-                        lang="en"
-                        dir="ltr"
-                        type={passwordVisible ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(event) => setConfirmPassword(event.target.value)}
-                        autoComplete="new-password"
-                        aria-invalid={Boolean(fieldErrors.newPassword)}
-                        aria-describedby={fieldDescription("auth-new-password", fieldErrors.newPassword, "حداقل ۸ کاراکتر")}
-                        className={`${authInputClassName} pe-11 ps-12 text-left`}
-                      />
-                      <PasswordToggle visible={passwordVisible} onToggle={() => setPasswordVisible((current) => !current)} />
-                    </FormField>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                {identifierField}
-                {passwordField}
-              </>
-            )}
+                        label="رمز عبور جدید"
+                        icon={HiLockClosed}
+                        error={fieldErrors.newPassword}
+                        hint={PASSWORD_HINT}
+                      >
+                        <input
+                          id="auth-new-password"
+                          lang="en"
+                          dir="ltr"
+                          type={passwordVisible ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(event) =>
+                            setConfirmPassword(event.target.value)
+                          }
+                          autoComplete="new-password"
+                          aria-invalid={Boolean(fieldErrors.newPassword)}
+                          aria-describedby={fieldDescription(
+                            "auth-new-password",
+                            fieldErrors.newPassword,
+                            PASSWORD_HINT,
+                          )}
+                          className={`${authInputClassName} ${authPasswordPaddingClassName}`}
+                        />
+                        <PasswordToggle
+                          visible={passwordVisible}
+                          onToggle={() =>
+                            setPasswordVisible((current) => !current)
+                          }
+                        />
+                      </FormField>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {identifierField}
+                  {passwordField}
+                </>
+              )}
 
               <button
                 id="auth-submit"
@@ -726,12 +860,20 @@ export default function AuthenticationModal({
             {tab === "login" && (loginView !== "code" || codeSent) && (
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                 {loginView === "password" && (
-                  <button type="button" className={authLinkButtonClassName} onClick={() => selectLoginView("forgot")}>
+                  <button
+                    type="button"
+                    className={authLinkButtonClassName}
+                    onClick={() => selectLoginView("forgot")}
+                  >
                     رمز عبور را فراموش کرده‌ام
                   </button>
                 )}
                 {loginView === "forgot" && (
-                  <button type="button" className={authLinkButtonClassName} onClick={() => selectLoginView("password")}>
+                  <button
+                    type="button"
+                    className={authLinkButtonClassName}
+                    onClick={() => selectLoginView("password")}
+                  >
                     بازگشت به ورود
                   </button>
                 )}
@@ -747,7 +889,9 @@ export default function AuthenticationModal({
                       focusField("auth-identifier");
                     }}
                   >
-                    {recoveryChannel === "email" ? "تغییر ایمیل یا ارسال دوباره کد" : "تغییر شماره یا ارسال دوباره کد"}
+                    {recoveryChannel === "email"
+                      ? "تغییر ایمیل یا ارسال دوباره کد"
+                      : "تغییر شماره یا ارسال دوباره کد"}
                   </button>
                 )}
                 {loginView === "code" && codeSent && (
@@ -771,14 +915,22 @@ export default function AuthenticationModal({
               {tab === "login" ? (
                 <>
                   حساب کاربری نداری؟{" "}
-                  <button type="button" className={authLinkButtonClassName} onClick={() => selectTab("signup")}>
+                  <button
+                    type="button"
+                    className={authLinkButtonClassName}
+                    onClick={() => selectTab("signup")}
+                  >
                     ساخت حساب جدید
                   </button>
                 </>
               ) : (
                 <>
                   قبلاً حساب ساخته‌ای؟{" "}
-                  <button type="button" className={authLinkButtonClassName} onClick={() => selectTab("login")}>
+                  <button
+                    type="button"
+                    className={authLinkButtonClassName}
+                    onClick={() => selectTab("login")}
+                  >
                     ورود به حساب
                   </button>
                 </>
@@ -792,12 +944,6 @@ export default function AuthenticationModal({
     </Modal>
   );
 }
-
-/** Shown when SMS is on: sign in with a password or with a texted code. */
-const loginMethods: readonly SegmentedOption<"password" | "code">[] = [
-  { value: "password", label: "با رمز عبور", icon: HiLockClosed },
-  { value: "code", label: "با کد پیامکی", icon: HiChatAlt },
-];
 
 function TabButton({
   id,

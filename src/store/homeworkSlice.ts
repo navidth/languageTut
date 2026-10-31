@@ -3,54 +3,16 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import {
-  toApiErrorInfo,
-  type ApiErrorInfo,
-  type ApiErrorKind,
-} from "@/lib/apiErrors";
-import { isCacheFresh } from "@/lib/cache";
-import {
-  homeworkApi,
-  isFullSubmission,
-  toSubmissionSummary,
-  type Homework,
-  type HomeworkScope,
-  type HomeworkSubmission,
-  type HomeworkSubmissionSummary,
-} from "@/lib/homeworkApi";
-import type { Paginated } from "@/lib/studentApi";
-import { loadMe, login, logout, register } from "./authSlice";
-
-type RequestStatus = "idle" | "loading" | "succeeded" | "failed";
-
-export type HomeworkEntry<T> = {
-  data: T | null;
-  status: RequestStatus;
-  error: string | null;
-  errorKind: ApiErrorKind | null;
-  lastFetched: number | null;
-};
-
-export type HomeworkListFilters = {
-  page: number;
-  course?: number;
-  scope?: HomeworkScope;
-};
-
-export type HomeworkState = {
-  /** Server-filtered pages, keyed by `homeworkListKey`. */
-  lists: Record<string, HomeworkEntry<Paginated<Homework>>>;
-  details: Record<number, HomeworkEntry<Homework>>;
-  /** Full submission records, keyed by submission id. */
-  submissions: Record<number, HomeworkEntry<HomeworkSubmission>>;
-};
+import { toApiErrorInfo } from "@/lib/services/apiErrors";
+import { homeworkApi } from "@/lib/services/homeworkApi";
+import { isFullSubmission, toSubmissionSummary } from "@/lib/presentation/homework";
+import { type Homework, type HomeworkSubmission, type HomeworkSubmissionSummary } from "@/types/homework";
+import type { Paginated } from "@/types/api";
+import { loadMe, login, logout, register } from "@/store/authSlice";
+import { failedEntry, loadedEntry, pendingEntry, shouldFetch } from "@/store/entries";
+import type { HomeworkState, HomeworkListFilters, HomeworkThunkConfig } from "@/types/store";
 
 const initialState: HomeworkState = { lists: {}, details: {}, submissions: {} };
-
-type HomeworkThunkConfig = {
-  state: { homework: HomeworkState };
-  rejectValue: ApiErrorInfo;
-};
 
 const LIST_ERROR = "دریافت تکالیف ناموفق بود.";
 const DETAIL_ERROR = "دریافت اطلاعات تکلیف ناموفق بود.";
@@ -77,11 +39,8 @@ export const fetchHomeworkList = createAsyncThunk<
     }
   },
   {
-    condition: ({ force, ...filters }, { getState }) => {
-      const entry = getState().homework.lists[homeworkListKey(filters)];
-      if (entry?.status === "loading") return false;
-      return Boolean(force) || !isCacheFresh(entry?.lastFetched);
-    },
+    condition: ({ force, ...filters }, { getState }) =>
+      shouldFetch(getState().homework.lists[homeworkListKey(filters)], force),
   },
 );
 
@@ -99,11 +58,8 @@ export const fetchHomework = createAsyncThunk<
     }
   },
   {
-    condition: ({ id, force }, { getState }) => {
-      const entry = getState().homework.details[id];
-      if (entry?.status === "loading") return false;
-      return Boolean(force) || !isCacheFresh(entry?.lastFetched);
-    },
+    condition: ({ id, force }, { getState }) =>
+      shouldFetch(getState().homework.details[id], force),
   },
 );
 
@@ -125,49 +81,10 @@ export const fetchHomeworkSubmission = createAsyncThunk<
     }
   },
   {
-    condition: ({ id, force }, { getState }) => {
-      const entry = getState().homework.submissions[id];
-      if (entry?.status === "loading") return false;
-      return Boolean(force) || !isCacheFresh(entry?.lastFetched);
-    },
+    condition: ({ id, force }, { getState }) =>
+      shouldFetch(getState().homework.submissions[id], force),
   },
 );
-
-function pendingEntry<T>(
-  entry: HomeworkEntry<T> | undefined,
-): HomeworkEntry<T> {
-  return {
-    data: entry?.data ?? null,
-    status: "loading",
-    error: null,
-    errorKind: null,
-    lastFetched: entry?.lastFetched ?? null,
-  };
-}
-
-function loadedEntry<T>(data: T, fetchedAt: number): HomeworkEntry<T> {
-  return {
-    data,
-    status: "succeeded",
-    error: null,
-    errorKind: null,
-    lastFetched: fetchedAt,
-  };
-}
-
-function failedEntry<T>(
-  entry: HomeworkEntry<T> | undefined,
-  info: ApiErrorInfo | undefined,
-  fallback: string,
-): HomeworkEntry<T> {
-  return {
-    data: entry?.data ?? null,
-    status: "failed",
-    error: info?.message ?? fallback,
-    errorKind: info?.kind ?? "unknown",
-    lastFetched: entry?.lastFetched ?? null,
-  };
-}
 
 /**
  * Keeps a full `my_submission` as the submission record, so the detail page
@@ -212,7 +129,7 @@ const homeworkSlice = createSlice({
     ) {
       const { homeworkId, submission } = action.payload;
       setCachedSubmission(state, homeworkId, toSubmissionSummary(submission));
-      state.submissions[submission.id] = loadedEntry(submission, Date.now());
+      state.submissions[submission.id] = loadedEntry(submission);
     },
     homeworkSubmissionRemoved(
       state,
@@ -278,7 +195,7 @@ const homeworkSlice = createSlice({
       })
       .addCase(fetchHomeworkSubmission.fulfilled, (state, action) => {
         const submission = action.payload;
-        state.submissions[submission.id] = loadedEntry(submission, Date.now());
+        state.submissions[submission.id] = loadedEntry(submission);
       })
       .addCase(fetchHomeworkSubmission.rejected, (state, action) => {
         const { id } = action.meta.arg;

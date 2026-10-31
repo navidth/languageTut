@@ -3,15 +3,9 @@
 import Link from "next/link";
 import { HiChevronLeft } from "react-icons/hi";
 import AuthModalButton from "@/components/auth/AuthModalButton";
-import type { UserRole } from "@/lib/auth";
-import { dashboardRouteForRole } from "@/lib/authFlow";
+import { dashboardRouteForRole } from "@/lib/utils/authFlow";
 import { useAppSelector } from "@/store/hooks";
-
-const roleLabels: Record<UserRole, string> = {
-  student: "زبان‌آموز",
-  teacher: "مدرس",
-  admin: "مدیر",
-};
+import { ROLE_LABELS } from "@/constants/auth";
 
 // Below md the header is narrow, so this shows only the avatar or a compact
 // button; from md up it shows the full account card.
@@ -20,7 +14,7 @@ export default function LandingAccountAction() {
 
   if (status === "authenticated" && user) {
     const displayName = user.full_name.trim() || user.email.split("@")[0];
-    const roleLabel = roleLabels[user.role];
+    const roleLabel = ROLE_LABELS[user.role];
 
     return (
       <Link

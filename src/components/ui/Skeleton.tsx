@@ -13,7 +13,7 @@ export function Skeleton({ className = "" }: SkeletonProps) {
 }
 
 /** Placeholder with the proportions of a dashboard list card. */
-export function SkeletonCard({ className = "" }: SkeletonProps) {
+function SkeletonCard({ className = "" }: SkeletonProps) {
   return (
     <div
       aria-hidden="true"

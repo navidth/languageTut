@@ -1,17 +1,17 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { skillLabels } from "@/lib/skillPresentation";
+import { skillLabels } from "@/constants/skills";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
-import SkillsDashboard from "./SkillsDashboard";
+import SkillsDashboard from "@/components/dashboard/skills/SkillsDashboard";
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   remove: vi.fn(),
 }));
 
-vi.mock("@/lib/skills", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/skills")>();
+vi.mock("@/lib/services/skillsApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/skillsApi")>();
   return { ...actual, skillsApi: { ...actual.skillsApi, list: mocks.list, remove: mocks.remove } };
 });
 

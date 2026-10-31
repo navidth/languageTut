@@ -1,21 +1,12 @@
 import Link from "next/link";
 import {
   HiArrowLeft,
-  HiChartBar,
-  HiOutlineClipboardCheck,
   HiSparkles,
 } from "react-icons/hi";
 import AuthModalButton from "@/components/auth/AuthModalButton";
 import Reveal from "@/components/ui/Reveal";
-import { PLACEMENT_SECTION_ID } from "@/lib/routes";
-
-// IELTS sits in the middle as the featured link; the two beside it share one
-// size whatever their label length.
-const benefits = [
-  { icon: HiOutlineClipboardCheck, text: "مشاهده دوره‌ها", href: "/courses", featured: false },
-  { icon: HiChartBar, text: "IELTS", href: "/ielts", featured: true },
-  { icon: HiSparkles, text: "مشاوره آنلاین", href: "/consultation", featured: false },
-];
+import { PLACEMENT_SECTION_ID } from "@/constants/routes";
+import { placementLinks } from "@/constants/landing";
 
 export default function PlacementTestSection() {
   return (
@@ -74,7 +65,7 @@ export default function PlacementTestSection() {
               middle column is wider and the IELTS card taller, without a
               scale transform, so its text stays sharp. */}
           <div className="grid grid-cols-[1fr_1.2fr_1fr] items-center gap-3 sm:gap-5">
-            {benefits.map(({ icon: Icon, text, href, featured }) => (
+            {placementLinks.map(({ icon: Icon, text, href, featured }) => (
               <Link
                 key={text}
                 href={href}

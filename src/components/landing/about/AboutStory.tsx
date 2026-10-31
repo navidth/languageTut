@@ -1,17 +1,4 @@
-import { HiOutlineEye, HiOutlineFlag } from "react-icons/hi";
-
-const pillars = [
-  {
-    icon: HiOutlineFlag,
-    title: "مأموریت ما",
-    text: "کمک به هر زبان‌آموز برای یافتن مسیری متناسب با سطح و هدفش، و دادن ابزارهای دقیق‌تر به مدرس‌ها برای همراهی او.",
-  },
-  {
-    icon: HiOutlineEye,
-    title: "چشم‌انداز ما",
-    text: "تجربه‌ای از یادگیری زبان که در آن هر جلسه تمرین به پیشرفتی قابل‌مشاهده تبدیل شود.",
-  },
-] as const;
+import { aboutStoryPillars } from "@/constants/landing";
 
 export default function AboutStory() {
   return (
@@ -33,7 +20,7 @@ export default function AboutStory() {
         </div>
 
         <ul className="space-y-4">
-          {pillars.map(({ icon: Icon, title, text }, index) => (
+          {aboutStoryPillars.map(({ icon: Icon, title, text }, index) => (
             <li
               key={title}
               className={`relative overflow-hidden rounded-[1.75rem] p-7 sm:p-8 ${index === 0 ? "bg-gradient-to-br from-brand-secondary to-brand-primary text-white shadow-[var(--shadow-brand-md)]" : "surface-card"}`}

@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/lib/apiErrors";
+import { ApiError } from "@/lib/services/apiErrors";
 import {
   buildHomework,
   buildSubmissionSummary,
@@ -16,11 +16,11 @@ const studentMocks = vi.hoisted(() => ({
   enrollments: vi.fn(),
 }));
 
-vi.mock("@/lib/homeworkApi", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/homeworkApi")>()),
+vi.mock("@/lib/services/homeworkApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/services/homeworkApi")>()),
   homeworkApi: homeworkMocks,
 }));
-vi.mock("@/lib/studentApi", () => ({ studentApi: studentMocks }));
+vi.mock("@/lib/services/studentApi", () => ({ studentApi: studentMocks }));
 
 const gradedHomework = buildHomework({
   id: 2,

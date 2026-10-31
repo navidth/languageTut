@@ -1,35 +1,21 @@
 "use client";
 
 import { type FormEvent, type ReactNode, useState } from "react";
-import {
-  authApi,
-  normalizeIranianMobile,
-  toLatinDigits,
-  type PatchedUserRequest,
-  type User,
-} from "@/lib/auth";
-import { getApiErrorMessage } from "@/lib/apiErrors";
-import { formatPersianDate } from "@/lib/date";
-import { useAuthFeatures } from "@/components/auth/useAuthFeatures";
+import { authApi } from "@/lib/services/authApi";
+import { normalizeIranianMobile, toLatinDigits } from "@/lib/utils/normalize";
+import { type PatchedUserRequest, type User } from "@/types/auth";
+import { getApiErrorMessage } from "@/lib/services/apiErrors";
+import { formatPersianDate } from "@/lib/utils/date";
+import { useAuthFeatures } from "@/hooks/useAuthFeatures";
 import AsyncState from "@/components/ui/AsyncState";
 import CodeInput from "@/components/ui/CodeInput";
-import { loadMe, updateProfile, type ProfileUpdateError } from "@/store/authSlice";
+import { loadMe, updateProfile } from "@/store/authSlice";
+import { type ProfileUpdateError } from "@/types/store";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-
-type ProfileForm = {
-  full_name: string;
-  email: string;
-  phone_number: string;
-  current_password: string;
-};
-
-/** Keys match the API field names, so server errors land on the right input. */
-type FieldKey = keyof ProfileForm;
-type FieldErrors = Partial<Record<FieldKey, string>>;
-
-const FIELD_KEYS: FieldKey[] = ["full_name", "email", "phone_number", "current_password"];
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const inputClassName = "w-full rounded-xl border bg-card p-3";
+import type { ProfileFieldKey, ProfileForm, ProfileFieldErrors } from "@/types/auth";
+import { EMAIL_PATTERN, PROFILE_FIELD_KEYS } from "@/constants/auth";
+import { twMerge } from "tailwind-merge";
+import { FIELD_CLASS_NAME } from "@/constants/ui";
 
 function formFromUser(user: User): ProfileForm {
   return {
@@ -66,7 +52,7 @@ function ProfileContent({
 }) {
   const dispatch = useAppDispatch();
   const [form, setForm] = useState<ProfileForm>(() => formFromUser(user));
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [errors, setErrors] = useState<ProfileFieldErrors>({});
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const fullName = form.full_name.trim();
@@ -82,17 +68,17 @@ function ProfileContent({
   const needsPassword = emailChanged || phoneChanged;
   const loading = updateStatus === "loading";
 
-  function setField(field: FieldKey, value: string) {
+  function setField(field: ProfileFieldKey, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setResult(null);
   }
 
   function validate() {
-    const next: FieldErrors = {};
+    const next: ProfileFieldErrors = {};
     if (!fullName) next.full_name = "نام و نام خانوادگی را وارد کنید.";
     else if (fullName.length > 255) next.full_name = "نام و نام خانوادگی حداکثر ۲۵۵ کاراکتر است.";
-    if (!emailPattern.test(email)) next.email = "یک ایمیل معتبر وارد کنید.";
+    if (!EMAIL_PATTERN.test(email)) next.email = "یک ایمیل معتبر وارد کنید.";
     if (phoneChanged && !phoneInput) next.phone_number = "شماره موبایل را وارد کنید.";
     else if (phoneChanged && !normalizeIranianMobile(phoneInput)) {
       next.phone_number = "شماره موبایل معتبر نیست. نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹";
@@ -125,8 +111,8 @@ function ProfileContent({
       setResult({ ok: true, text: "اطلاعات پروفایل با موفقیت ذخیره شد." });
     } catch (reason) {
       const failure = reason as Partial<ProfileUpdateError>;
-      const serverErrors: FieldErrors = {};
-      for (const key of FIELD_KEYS) {
+      const serverErrors: ProfileFieldErrors = {};
+      for (const key of PROFILE_FIELD_KEYS) {
         const message = failure.fieldErrors?.[key]?.[0];
         if (message) serverErrors[key] = message;
       }
@@ -146,13 +132,13 @@ function ProfileContent({
     setResult(null);
   }
 
-  const inputProps = (field: FieldKey, extraClassName = "") => ({
+  const inputProps = (field: ProfileFieldKey, extraClassName = "") => ({
     id: `profile-${field}`,
     value: form[field],
     onChange: (event: { target: { value: string } }) => setField(field, event.target.value),
     "aria-invalid": Boolean(errors[field]),
     "aria-describedby": errors[field] ? `profile-${field}-error` : undefined,
-    className: `${inputClassName} ${errors[field] ? "border-destructive" : "border-input"} ${extraClassName}`,
+    className: twMerge(FIELD_CLASS_NAME, errors[field] && "border-destructive", extraClassName),
   });
 
   return (

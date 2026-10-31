@@ -7,8 +7,8 @@ import HomeworkListRoute from "./HomeworkListRoute";
 const homeworkMocks = vi.hoisted(() => ({ list: vi.fn() }));
 const navigation = vi.hoisted(() => ({ query: "" }));
 
-vi.mock("@/lib/homeworkApi", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/homeworkApi")>()),
+vi.mock("@/lib/services/homeworkApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/services/homeworkApi")>()),
   homeworkApi: homeworkMocks,
 }));
 vi.mock("next/navigation", () => ({

@@ -3,14 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Provider } from "react-redux";
-import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
-  SESSION_EXPIRED_EVENT,
-  hasStoredSession,
-} from "@/lib/apiClient";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, SESSION_EXPIRED_EVENT } from "@/constants/storage";
+import { hasStoredSession } from "@/lib/services/apiClient";
 import { makeStore, AppStore } from ".";
-import { loadMe, logout } from "./authSlice";
+import { loadMe, logout } from "@/store/authSlice";
 
 export default function StoreProvider({ children }: { children: React.ReactNode }) {
   const [store] = useState<AppStore>(makeStore);

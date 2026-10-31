@@ -6,7 +6,7 @@ import {
   buildPracticeTest,
 } from "@/test/fixtures";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
-import StudentResourcePage from "./StudentResourcePage";
+import StudentResourcePage from "@/components/dashboard/student/StudentResourcePage";
 
 const studentMocks = vi.hoisted(() => ({
   tests: vi.fn(),
@@ -14,7 +14,7 @@ const studentMocks = vi.hoisted(() => ({
   mySubmissions: vi.fn(),
 }));
 
-vi.mock("@/lib/studentApi", () => ({ studentApi: studentMocks }));
+vi.mock("@/lib/services/studentApi", () => ({ studentApi: studentMocks }));
 
 describe("StudentResourcePage exam results", () => {
   beforeEach(() => {

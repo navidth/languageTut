@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BiLogOut } from "react-icons/bi";
 import { BsPersonCircle } from "react-icons/bs";
 import { HiChevronDown } from "react-icons/hi";
-import { hasStoredSession } from "@/lib/apiClient";
-import { loadMe, signOut } from "@/store/authSlice";
+import { signOut } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import HeaderMenu, {
   headerMenuItemClassName,
@@ -21,13 +19,8 @@ const triggerClassName =
 function UserDropdown() {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const { user, status } = useAppSelector((state) => state.auth);
-
-  useEffect(() => {
-    if (hasStoredSession() && status !== "authenticated" && status !== "loading") {
-      void dispatch(loadMe());
-    }
-  }, [dispatch, status]);
+  // StoreProvider restores a stored session on every dashboard page.
+  const user = useAppSelector((state) => state.auth.user);
 
   const handleLogout = () => {
     void dispatch(signOut());

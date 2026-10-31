@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { HiChevronLeft, HiChevronRight } from "react-icons/hi";
-import { buildPaginationItems, inferTotalPages } from "@/lib/pagination";
+import { buildPaginationItems, inferTotalPages } from "@/lib/utils/pagination";
 
 type QueryValue = string | string[] | number | boolean | null | undefined;
 

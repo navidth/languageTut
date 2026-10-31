@@ -1,7 +1,8 @@
 import { memo } from "react";
-import { formatQuestionType } from "@/lib/examPresentation";
-import type { Question, StudentAnswer } from "@/lib/studentApi";
+import { formatQuestionType } from "@/lib/presentation/exam";
+import type { Question, StudentAnswer } from "@/types/exam";
 import PracticeTestMedia from "./PracticeTestMedia";
+import { FIELD_CLASS_NAME } from "@/constants/ui";
 
 function questionScore(points: string | undefined) {
   if (!points) return "—";
@@ -133,7 +134,7 @@ function TestQuestionCard({
           value={answer}
           disabled={disabled}
           onChange={(event) => onAnswerChange(question.id, event.target.value)}
-          className="mt-4 w-full rounded-xl border border-input bg-card p-3"
+          className={`mt-4 ${FIELD_CLASS_NAME}`}
           dir="ltr"
           placeholder="پاسخ کوتاه خود را بنویسید..."
           aria-label={`پاسخ سؤال ${questionNumber}`}
@@ -143,7 +144,7 @@ function TestQuestionCard({
           value={answer}
           disabled={disabled}
           onChange={(event) => onAnswerChange(question.id, event.target.value)}
-          className="mt-4 min-h-28 w-full rounded-xl border border-input bg-card p-3"
+          className={`mt-4 min-h-28 ${FIELD_CLASS_NAME}`}
           dir="ltr"
           placeholder="پاسخ خود را بنویسید..."
           aria-label={`پاسخ سؤال ${questionNumber}`}

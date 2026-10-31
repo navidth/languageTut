@@ -2,12 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { hasStoredSession } from "@/lib/apiClient";
-import { dashboardRouteForRole } from "@/lib/authFlow";
+import { hasStoredSession } from "@/lib/services/apiClient";
+import { dashboardRouteForRole } from "@/lib/utils/authFlow";
 import { loadMe } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-
-export const INITIAL_ROLE_REDIRECT_KEY = "examification:initial-role-redirect";
+import { INITIAL_ROLE_REDIRECT_KEY } from "@/constants/storage";
 
 export default function LandingAuthCheck({
   children,

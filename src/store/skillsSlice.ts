@@ -1,34 +1,10 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/apiErrors";
-import { isCacheFresh } from "@/lib/cache";
-import {
-  type PaginatedSkills,
-  type PatchedSkillRequest,
-  type Skill,
-  type SkillRequest,
-  skillsApi,
-} from "@/lib/skills";
+import { getApiErrorMessage, getApiSuccessMessage } from "@/lib/services/apiErrors";
+import { isCacheFresh } from "@/lib/utils/cache";
+import { type PaginatedSkills, type PatchedSkillRequest, type Skill, type SkillRequest } from "@/types/skill";
+import { skillsApi } from "@/lib/services/skillsApi";
+import type { SkillsState, SkillsThunkConfig } from "@/types/store";
 
-type RequestStatus = "idle" | "loading" | "succeeded" | "failed";
-
-type SkillsState = {
-  items: Skill[];
-  selected: Skill | null;
-  count: number;
-  next: string | null;
-  previous: string | null;
-  page: number;
-  detailRequestedId: number | null;
-  listStatus: RequestStatus;
-  detailStatus: RequestStatus;
-  mutationStatus: RequestStatus;
-  listError: string | null;
-  detailError: string | null;
-  mutationError: string | null;
-  successMessage: string | null;
-  listLastFetched: number | null;
-  detailLastFetched: number | null;
-};
 
 const initialState: SkillsState = {
   items: [],
@@ -49,15 +25,10 @@ const initialState: SkillsState = {
   detailLastFetched: null,
 };
 
-type ThunkConfig = {
-  state: { skills: SkillsState };
-  rejectValue: string;
-};
-
 export const fetchSkills = createAsyncThunk<
   PaginatedSkills,
   number | undefined,
-  ThunkConfig
+  SkillsThunkConfig
 >(
   "skills/list",
   async (page = 1, api) => {
@@ -76,7 +47,7 @@ export const fetchSkills = createAsyncThunk<
   },
 );
 
-export const fetchSkill = createAsyncThunk<Skill, number, ThunkConfig>(
+export const fetchSkill = createAsyncThunk<Skill, number, SkillsThunkConfig>(
   "skills/retrieve",
   async (id, api) => {
     try {
@@ -99,7 +70,7 @@ export const fetchSkill = createAsyncThunk<Skill, number, ThunkConfig>(
   },
 );
 
-export const createSkill = createAsyncThunk<Skill, SkillRequest, ThunkConfig>(
+export const createSkill = createAsyncThunk<Skill, SkillRequest, SkillsThunkConfig>(
   "skills/create",
   async (payload, api) => {
     try {
@@ -110,22 +81,10 @@ export const createSkill = createAsyncThunk<Skill, SkillRequest, ThunkConfig>(
   },
 );
 
-export const replaceSkill = createAsyncThunk<
-  Skill,
-  { id: number; data: SkillRequest },
-  ThunkConfig
->("skills/update", async ({ id, data }, api) => {
-  try {
-    return await skillsApi.update(id, data);
-  } catch (error) {
-    return api.rejectWithValue(getApiErrorMessage(error, "ویرایش مهارت ناموفق بود."));
-  }
-});
-
 export const updateSkill = createAsyncThunk<
   Skill,
   { id: number; data: PatchedSkillRequest },
-  ThunkConfig
+  SkillsThunkConfig
 >("skills/patch", async ({ id, data }, api) => {
   try {
     return await skillsApi.patch(id, data);
@@ -134,7 +93,7 @@ export const updateSkill = createAsyncThunk<
   }
 });
 
-export const deleteSkill = createAsyncThunk<number, number, ThunkConfig>(
+export const deleteSkill = createAsyncThunk<number, number, SkillsThunkConfig>(
   "skills/delete",
   async (id, api) => {
     try {
@@ -160,13 +119,6 @@ const skillsSlice = createSlice({
       state.mutationError = null;
       state.successMessage = null;
       state.mutationStatus = "idle";
-    },
-    clearSelectedSkill(state) {
-      state.selected = null;
-      state.detailRequestedId = null;
-      state.detailError = null;
-      state.detailStatus = "idle";
-      state.detailLastFetched = null;
     },
   },
   extraReducers(builder) {
@@ -234,14 +186,6 @@ const skillsSlice = createSlice({
         state.successMessage = getApiSuccessMessage(201, "مهارت با موفقیت ایجاد شد.");
       })
       .addCase(createSkill.rejected, mutationRejected)
-      .addCase(replaceSkill.pending, mutationPending)
-      .addCase(replaceSkill.fulfilled, (state, action) => {
-        state.mutationStatus = "succeeded";
-        updateStoredSkill(state, action.payload);
-        state.listLastFetched = Date.now();
-        state.successMessage = getApiSuccessMessage(200, "مهارت با موفقیت ویرایش شد.");
-      })
-      .addCase(replaceSkill.rejected, mutationRejected)
       .addCase(updateSkill.pending, mutationPending)
       .addCase(updateSkill.fulfilled, (state, action) => {
         state.mutationStatus = "succeeded";
@@ -265,5 +209,5 @@ const skillsSlice = createSlice({
   },
 });
 
-export const { clearSelectedSkill, clearSkillFeedback } = skillsSlice.actions;
+export const { clearSkillFeedback } = skillsSlice.actions;
 export default skillsSlice.reducer;

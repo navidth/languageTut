@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import CodeInput, { normalizeCode } from "./CodeInput";
+import CodeInput from "@/components/ui/CodeInput";
+import { normalizeCode } from "@/lib/utils/normalize";
 
 function Harness({ onComplete }: { onComplete?: (code: string) => void }) {
   const [code, setCode] = useState("");

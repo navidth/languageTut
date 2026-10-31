@@ -1,5 +1,5 @@
-import type { IconType } from "react-icons";
-import { HiOutlineBookOpen, HiOutlinePencilAlt, HiOutlineVolumeUp } from "react-icons/hi";
+import { PREVIEW_CURRENT_LEVEL, PREVIEW_TARGET_LEVEL, previewPractice, previewWeek, previewBreakdown, previewSubmissions } from "@/constants/landing";
+import { CEFR_LEVELS } from "@/constants/levels";
 
 // Illustrative product previews for the audiences section on the home page.
 // They are drawn in HTML so they cost no image requests, follow the theme
@@ -17,34 +17,13 @@ function Code({ children }: { children: string }) {
   );
 }
 
-const levels = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
-const CURRENT = 2;
-const TARGET = 4;
-
 function segmentClass(index: number) {
-  if (index < CURRENT) return "bg-brand-secondary/75 dark:bg-white/35";
-  if (index === CURRENT) return "bg-brand-accent";
-  if (index === TARGET) return "border border-dashed border-brand-accent";
-  if (index < TARGET) return "bg-brand-accent/25";
+  if (index < PREVIEW_CURRENT_LEVEL) return "bg-brand-secondary/75 dark:bg-white/35";
+  if (index === PREVIEW_CURRENT_LEVEL) return "bg-brand-accent";
+  if (index === PREVIEW_TARGET_LEVEL) return "border border-dashed border-brand-accent";
+  if (index < PREVIEW_TARGET_LEVEL) return "bg-brand-accent/25";
   return "bg-border";
 }
-
-const practice: { icon: IconType; skill: string; title: string; progress: number }[] = [
-  { icon: HiOutlineVolumeUp, skill: "Listening", title: "گفت‌وگوهای روزمره", progress: 72 },
-  { icon: HiOutlinePencilAlt, skill: "Writing", title: "نوشتن ایمیل رسمی", progress: 40 },
-  { icon: HiOutlineBookOpen, skill: "Reading", title: "درک مطلب کوتاه", progress: 18 },
-];
-
-// The Iranian week starts on Saturday; Thursday is "today", Friday is still ahead.
-const week = [
-  { day: "ش", value: 40 },
-  { day: "ی", value: 65 },
-  { day: "د", value: 30 },
-  { day: "س", value: 80 },
-  { day: "چ", value: 55 },
-  { day: "پ", value: 90, today: true },
-  { day: "ج", value: 8, ahead: true },
-];
 
 /** A learner's dashboard card: the level path, today's practice and the week. */
 export function LearnerPreview() {
@@ -63,12 +42,12 @@ export function LearnerPreview() {
       </div>
 
       <ol className="mt-4 grid grid-cols-6 gap-1.5">
-        {levels.map((level, index) => (
+        {CEFR_LEVELS.map((level, index) => (
           <li key={level}>
             <span className={`block h-2 rounded-full ${segmentClass(index)}`} />
             <span
               className={`mt-1.5 block text-center text-[11px] ${
-                index === CURRENT ? "font-black text-foreground" : "text-muted-foreground"
+                index === PREVIEW_CURRENT_LEVEL ? "font-black text-foreground" : "text-muted-foreground"
               }`}
             >
               <Code>{level}</Code>
@@ -80,7 +59,7 @@ export function LearnerPreview() {
       <div className="mt-5 border-t border-border pt-4">
         <p className="text-xs font-bold text-muted-foreground">تمرین‌های امروز</p>
         <ul className="mt-3 space-y-3.5">
-          {practice.map(({ icon: Icon, skill, title, progress }) => (
+          {previewPractice.map(({ icon: Icon, skill, title, progress }) => (
             <li key={skill} className="flex items-center gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary-soft text-brand-secondary dark:text-brand-accent">
                 <Icon className="size-4.5" />
@@ -110,7 +89,7 @@ export function LearnerPreview() {
           <p className="text-xs font-black">۵ روز پیاپی</p>
         </div>
         <ol className="mt-3 grid grid-cols-7 gap-2">
-          {week.map(({ day, value, today, ahead }) => (
+          {previewWeek.map(({ day, value, today, ahead }) => (
             <li key={day}>
               <div className="flex h-14 items-end">
                 <span
@@ -135,19 +114,6 @@ export function LearnerPreview() {
   );
 }
 
-const breakdown = [
-  { label: "تحویل‌شده", share: 64, bar: "bg-success", dot: "bg-success" },
-  { label: "منتظر بازخورد", share: 22, bar: "bg-brand-accent", dot: "bg-brand-accent" },
-  { label: "دیر تحویل", share: 14, bar: "bg-destructive", dot: "bg-destructive" },
-] as const;
-
-const submissions = [
-  { initial: "س", name: "سارا محمدی", time: "۲ ساعت پیش", status: "تحویل‌شده", tone: "bg-success-soft text-success", score: "۱۸٫۵" },
-  { initial: "ا", name: "امیر حسینی", time: "امروز", status: "منتظر بازخورد", tone: "bg-accent-soft text-warning", score: "—" },
-  { initial: "ن", name: "نگار کریمی", time: "دیروز", status: "دیر تحویل", tone: "bg-destructive-soft text-destructive", score: "۱۴" },
-  { initial: "م", name: "محمد رضایی", time: "دیروز", status: "تحویل‌شده", tone: "bg-success-soft text-success", score: "۱۷" },
-] as const;
-
 /**
  * A teacher's class card: how this week's homework stands, then the latest
  * submissions. It sits on the dark plum panel in both themes, so it takes the
@@ -169,12 +135,12 @@ export function TeacherPreview() {
       </div>
 
       <div className="reveal-grow mt-4 flex h-2 gap-0.5 overflow-hidden rounded-full">
-        {breakdown.map(({ label, share, bar }) => (
+        {previewBreakdown.map(({ label, share, bar }) => (
           <span key={label} className={`h-full ${bar}`} style={{ width: `${share}%` }} />
         ))}
       </div>
       <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-        {breakdown.map(({ label, share, dot }) => (
+        {previewBreakdown.map(({ label, share, dot }) => (
           <li key={label} className="inline-flex items-center gap-1.5">
             <span className={`size-1.5 rounded-full ${dot}`} />
             {label} {share.toLocaleString("fa-IR")}٪
@@ -183,7 +149,7 @@ export function TeacherPreview() {
       </ul>
 
       <ul className="mt-4 divide-y divide-border border-t border-border">
-        {submissions.map(({ initial, name, time, status, tone, score }) => (
+        {previewSubmissions.map(({ initial, name, time, status, tone, score }) => (
           <li key={name} className="flex items-center gap-3 py-3">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-black">
               {initial}

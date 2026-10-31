@@ -1,33 +1,6 @@
 import Link from "next/link";
 import BrandMark from "@/components/ui/BrandMark";
-import { PLACEMENT_SECTION_ID } from "@/lib/routes";
-
-const footerGroups = [
-  {
-    title: "یادگیری",
-    links: [
-      { label: "دوره‌های زبان", href: "/courses" },
-      { label: "تعیین سطح", href: `/#${PLACEMENT_SECTION_ID}` },
-      { label: "مهارت‌های زبان", href: "/#skills" },
-    ],
-  },
-  {
-    title: "ExamificatioN",
-    links: [
-      { label: "امکانات", href: "/features" },
-      { label: "نحوه کار", href: "/#how-it-works" },
-      { label: "درباره ما", href: "/about" },
-    ],
-  },
-  {
-    title: "دسترسی سریع",
-    links: [
-      { label: "دستیار هوشمند", href: "/ai" },
-      { label: "فضای مدرس‌ها", href: "/teacher" },
-      { label: "سؤالات متداول", href: "/#faq" },
-    ],
-  },
-] as const;
+import { footerGroups } from "@/constants/landing";
 
 export default function SiteFooter() {
   return (

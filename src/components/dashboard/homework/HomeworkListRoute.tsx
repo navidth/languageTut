@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { parseHomeworkSearchParams } from "@/lib/homeworkPresentation";
+import { parseHomeworkSearchParams } from "@/lib/presentation/homework";
 import HomeworkListPage from "./HomeworkListPage";
 
 /**

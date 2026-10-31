@@ -3,7 +3,7 @@
 import { DarkThemeToggle, Navbar } from "flowbite-react";
 import { usePathname } from "next/navigation";
 import Brand from "./Brand";
-import LandingAccountAction from "./LandingAccountAction";
+import LandingAccountAction from "@/components/landing/navbar/LandingAccountAction";
 import MenuDesktop from "./MenuDesktop";
 import MobileMenu from "./MobileMenu";
 

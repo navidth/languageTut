@@ -2,13 +2,11 @@
 
 import { useId, useRef, useState } from "react";
 import { HiDownload, HiPaperClip } from "react-icons/hi";
-import {
-  hasActiveSession,
-  useSessionState,
-} from "@/components/auth/useSessionState";
-import { normalizeApiError } from "@/lib/apiErrors";
-import { formatFileSize, saveBlob } from "@/lib/files";
-import { homeworkApi, type HomeworkAttachment } from "@/lib/homeworkApi";
+import { hasActiveSession, useSessionState } from "@/hooks/useSessionState";
+import { normalizeApiError } from "@/lib/services/apiErrors";
+import { formatFileSize, saveBlob } from "@/lib/utils/files";
+import { homeworkApi } from "@/lib/services/homeworkApi";
+import { type HomeworkAttachment } from "@/types/homework";
 
 /** Files the teacher handed out with the assignment. */
 export default function HomeworkAttachments({

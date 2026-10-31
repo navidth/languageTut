@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { HiAcademicCap, HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
-import type { Course } from "@/lib/courses";
-import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
+import type { Course } from "@/types/course";
+import { formatCoursePrice, formatCourseType } from "@/lib/presentation/course";
 
 export default function CourseGrid({
   initialCourses,

@@ -1,8 +1,9 @@
 import { useId, useMemo } from "react";
 import { HiExternalLink, HiVideoCamera, HiVolumeUp } from "react-icons/hi";
-import { normalizeMediaAssets, type MediaAsset } from "@/lib/media";
+import { normalizeMediaAssets } from "@/lib/utils/media";
+import { type MediaAsset } from "@/types/media";
 
-export { normalizeMediaAssets } from "@/lib/media";
+export { normalizeMediaAssets } from "@/lib/utils/media";
 
 type MediaGalleryProps = {
   media: MediaAsset[] | null | undefined;

@@ -1,25 +1,8 @@
 import Link from "next/link";
-import { HiArrowLeft, HiOutlineClipboardCheck, HiOutlineLightBulb, HiOutlinePresentationChartLine } from "react-icons/hi";
+import { HiArrowLeft } from "react-icons/hi";
 import Reveal from "@/components/ui/Reveal";
-import { PLACEMENT_SECTION_ID } from "@/lib/routes";
-
-const steps = [
-  {
-    icon: HiOutlineClipboardCheck,
-    title: "سطح فعلی‌تان را بشناسید",
-    text: "با تعیین سطح شروع کنید تا نقطه آغاز مسیر بر اساس توانایی واقعی شما مشخص شود.",
-  },
-  {
-    icon: HiOutlineLightBulb,
-    title: "مسیر مناسب را دریافت کنید",
-    text: "هدف و سطح شما به یک برنامه روشن از دوره‌ها، تمرین‌ها و اولویت‌های یادگیری تبدیل می‌شود.",
-  },
-  {
-    icon: HiOutlinePresentationChartLine,
-    title: "تمرین کنید و مسیر را بسنجید",
-    text: "با ادامه تمرین، روند پیشرفت را ببینید و قدم‌های بعدی را دقیق‌تر انتخاب کنید.",
-  },
-] as const;
+import { PLACEMENT_SECTION_ID } from "@/constants/routes";
+import { howItWorksSteps } from "@/constants/landing";
 
 export default function HowItWorksSection() {
   return (
@@ -41,7 +24,7 @@ export default function HowItWorksSection() {
           </Reveal>
 
           <ol className="relative space-y-4 before:absolute before:bottom-10 before:start-7 before:top-10 before:w-px before:bg-border sm:before:start-9">
-            {steps.map(({ icon: Icon, title, text }, index) => (
+            {howItWorksSteps.map(({ icon: Icon, title, text }, index) => (
               <Reveal
                 as="li"
                 key={title}

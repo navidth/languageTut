@@ -1,82 +1,69 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { HiAcademicCap, HiCheckCircle, HiCollection, HiLockClosed } from "react-icons/hi";
 import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
 import MediaGallery from "@/components/media/MediaGallery";
-import Pagination from "@/components/ui/Pagination";
 import AsyncState from "@/components/ui/AsyncState";
-import { getApiErrorMessage } from "@/lib/apiErrors";
-import { coursesApi, type Course, type Lesson, type PaginatedLessons } from "@/lib/courses";
-import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
-import { studentHomeworkPath } from "@/lib/routes";
-import { formatSkillName } from "@/lib/skillPresentation";
-import { studentApi, type CourseProgress } from "@/lib/studentApi";
+import Pagination from "@/components/ui/Pagination";
+import { formatCoursePrice, formatCourseType } from "@/lib/presentation/course";
+import { formatSkillName } from "@/lib/presentation/skill";
+import { getApiErrorMessage } from "@/lib/services/apiErrors";
+import { openPaymentPage } from "@/lib/utils/payment";
+import { studentHomeworkPath } from "@/lib/utils/routes";
+import {
+  activateCourse,
+  fetchCourseDetail,
+  fetchCourseLessons,
+  selectCourseDetail,
+  selectCourseLessons,
+} from "@/store/coursesSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { invalidateStudentProgress } from "@/store/studentSlice";
+import {
+  completeLesson,
+  fetchCourseProgress,
+  selectCourseProgress,
+  startLesson,
+} from "@/store/studentSlice";
+import type { Lesson } from "@/types/course";
+import { ROUTES, COURSE_LESSONS_SECTION_ID } from "@/constants/routes";
+
+type LessonAction = "start" | "complete";
 
 export default function StudentCourseDetailPage({ courseId }: { courseId: number }) {
   const dispatch = useAppDispatch();
   const { startAuthFlow } = useAuthFlow();
   const authStatus = useAppSelector((state) => state.auth.status);
   const user = useAppSelector((state) => state.auth.user);
-  const [course, setCourse] = useState<Course | null>(null);
-  const [lessons, setLessons] = useState<PaginatedLessons | null>(null);
-  const [progress, setProgress] = useState<CourseProgress | null>(null);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const courseEntry = useAppSelector((state) => selectCourseDetail(state, courseId));
+  const lessonsEntry = useAppSelector((state) => selectCourseLessons(state, courseId, page));
+  const progress = useAppSelector((state) => selectCourseProgress(state, courseId)?.data ?? null);
+  const course = courseEntry?.data ?? null;
+  const lessons = lessonsEntry?.data ?? null;
+  const hasAccess = Boolean(course?.has_access);
+  const lessonsLoading = hasAccess && (!lessonsEntry || lessonsEntry.status === "loading");
+  // Errors from the buttons on this page; load errors live in the store.
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [purchaseBusy, setPurchaseBusy] = useState(false);
-  const [lessonBusy, setLessonBusy] = useState<{ id: number; action: "start" | "complete" } | null>(null);
+  const [lessonBusy, setLessonBusy] = useState<{ id: number; action: LessonAction } | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
   const [lessonFeedback, setLessonFeedback] = useState<Record<number, { type: "success" | "error"; text: string }>>({});
-  const [notice, setNotice] = useState("");
-  const courseRef = useRef<Course | null>(null);
-  const progressLoadedRef = useRef(false);
-
-  const loadProgress = useCallback(async () => {
-    try {
-      setProgress(await studentApi.courseProgress(courseId));
-      progressLoadedRef.current = true;
-    } catch {
-      setProgress(null);
-    }
-  }, [courseId]);
-
-  const load = useCallback(async (requestedPage: number, refreshCourse = false) => {
-    setLoading(true);
-    setError("");
-    try {
-      const latestCourse = refreshCourse || !courseRef.current
-        ? await coursesApi.get(courseId)
-        : courseRef.current;
-      courseRef.current = latestCourse;
-      setCourse(latestCourse);
-
-      if (!latestCourse.has_access) {
-        setLessons(null);
-        setProgress(null);
-        return;
-      }
-
-      const [lessonData] = await Promise.all([
-        coursesApi.lessons(courseId, requestedPage),
-        progressLoadedRef.current ? Promise.resolve() : loadProgress(),
-      ]);
-      setLessons(lessonData);
-    } catch (reason) {
-      setError(getApiErrorMessage(reason, "دریافت اطلاعات دوره ناموفق بود."));
-    } finally {
-      setLoading(false);
-    }
-  }, [courseId, loadProgress]);
 
   useEffect(() => {
-    void load(page);
-  }, [load, page]);
+    void dispatch(fetchCourseDetail({ id: courseId }));
+  }, [courseId, dispatch]);
 
-  async function activateCourse() {
+  // Lessons and progress exist only once the student has access.
+  useEffect(() => {
+    if (!hasAccess) return;
+    void dispatch(fetchCourseLessons({ courseId, page }));
+    void dispatch(fetchCourseProgress({ courseId }));
+  }, [courseId, dispatch, hasAccess, page]);
+
+  async function handleActivate() {
     if (!course) return;
     if (authStatus !== "authenticated" || !user) {
       setError("برای ثبت‌نام در دوره ابتدا وارد حساب دانش‌آموز شوید.");
@@ -91,17 +78,13 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
     setError("");
     setNotice("");
     try {
-      const purchase = await studentApi.purchaseCourse(course.id);
-      if (purchase.payment_url) {
-        const url = new URL(purchase.payment_url);
-        if (!["http:", "https:"].includes(url.protocol)) throw new Error("نشانی پرداخت معتبر نیست.");
-        window.location.assign(url.toString());
+      const { purchase } = await dispatch(activateCourse(course.id)).unwrap();
+      if (purchase?.payment_url) {
+        openPaymentPage(purchase.payment_url);
         return;
       }
-
-      setNotice(purchase.detail || "دسترسی دوره فعال شد. اکنون می‌توانید درس‌ها را شروع کنید.");
-      progressLoadedRef.current = false;
-      await load(page, true);
+      setNotice(purchase?.detail || "دسترسی دوره فعال شد. اکنون می‌توانید درس‌ها را شروع کنید.");
+      void dispatch(fetchCourseProgress({ courseId, force: true }));
     } catch (reason) {
       setError(getApiErrorMessage(reason, "فعال‌سازی دوره ناموفق بود."));
     } finally {
@@ -109,7 +92,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
     }
   }
 
-  async function lessonAction(lesson: Lesson, action: "start" | "complete") {
+  async function lessonAction(lesson: Lesson, action: LessonAction) {
     if (authStatus !== "authenticated" || !user) {
       setLessonFeedback((current) => ({
         ...current,
@@ -134,23 +117,18 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
       return next;
     });
     try {
-      if (action === "start") {
-        await studentApi.startLesson(lesson.id);
-        setActiveLessonId(lesson.id);
-        setLessonFeedback((current) => ({
-          ...current,
-          [lesson.id]: { type: "success", text: "درس شروع شد؛ محتوای آن در همین کارت باز شده است." },
-        }));
-      } else {
-        await studentApi.completeLesson(lesson.id);
-        setActiveLessonId(lesson.id);
-        setLessonFeedback((current) => ({
-          ...current,
-          [lesson.id]: { type: "success", text: "تکمیل این درس با موفقیت ثبت شد." },
-        }));
-      }
-      await loadProgress();
-      dispatch(invalidateStudentProgress());
+      await dispatch(action === "start" ? startLesson(lesson.id) : completeLesson(lesson.id)).unwrap();
+      setActiveLessonId(lesson.id);
+      setLessonFeedback((current) => ({
+        ...current,
+        [lesson.id]: {
+          type: "success",
+          text: action === "start"
+            ? "درس شروع شد؛ محتوای آن در همین کارت باز شده است."
+            : "تکمیل این درس با موفقیت ثبت شد.",
+        },
+      }));
+      void dispatch(fetchCourseProgress({ courseId, force: true }));
     } catch (reason) {
       setLessonFeedback((current) => ({
         ...current,
@@ -164,15 +142,21 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
     }
   }
 
-  if (loading && !course) return <AsyncState message="در حال دریافت اطلاعات دوره..." />;
-  if (error && !course) return <AsyncState message={error} retry={() => void load(page, true)} />;
-  if (!course) return <AsyncState message="دوره پیدا نشد." />;
+  if (!course && courseEntry?.status === "failed") {
+    return (
+      <AsyncState
+        message={courseEntry.error ?? "دریافت اطلاعات دوره ناموفق بود."}
+        retry={() => void dispatch(fetchCourseDetail({ id: courseId, force: true }))}
+      />
+    );
+  }
+  if (!course) return <AsyncState message="در حال دریافت اطلاعات دوره..." />;
 
   const progressValue = Math.min(100, Math.max(0, Number(progress?.progress_percent ?? 0)));
 
   return (
     <article className="mx-auto max-w-6xl">
-      <Link href="/student/all-courses" className="brand-link mb-6 inline-block">بازگشت به همه دوره‌ها</Link>
+      <Link href={ROUTES.studentCourses} className="brand-link mb-6 inline-block">بازگشت به همه دوره‌ها</Link>
 
       <header className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-primary via-brand-primary to-brand-secondary p-7 text-white shadow-[var(--shadow-brand-md)] md:p-10">
         <div className="relative grid items-end gap-8 lg:grid-cols-[1fr_18rem]">
@@ -193,9 +177,9 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
               {course.has_access ? <><HiCheckCircle className="size-5 text-success" />دسترسی فعال است</> : <><HiLockClosed className="size-5 text-brand-accent" />نیاز به فعال‌سازی</>}
             </div>
             {course.has_access ? (
-              <a href="#course-lessons-title" className="brand-button mt-5 block rounded-xl px-4 py-3 text-center text-sm">رفتن به درس‌ها</a>
+              <a href={`#${COURSE_LESSONS_SECTION_ID}`} className="brand-button mt-5 block rounded-xl px-4 py-3 text-center text-sm">رفتن به درس‌ها</a>
             ) : (
-              <button type="button" onClick={() => void activateCourse()} disabled={purchaseBusy || !course.is_active} className="brand-button mt-5 w-full rounded-xl px-4 py-3 text-sm disabled:opacity-60">
+              <button type="button" onClick={() => void handleActivate()} disabled={purchaseBusy || !course.is_active} className="brand-button mt-5 w-full rounded-xl px-4 py-3 text-sm disabled:opacity-60">
                 {purchaseBusy ? "در حال آماده‌سازی..." : course.is_free ? "ثبت‌نام رایگان" : "خرید دوره"}
               </button>
             )}
@@ -228,9 +212,9 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
         </section>
       )}
 
-      <section className="mt-10 scroll-mt-24" aria-labelledby="course-lessons-title">
+      <section className="mt-10 scroll-mt-24" aria-labelledby={COURSE_LESSONS_SECTION_ID}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-          <div><h2 id="course-lessons-title" className="text-2xl font-black">درس‌های دوره</h2><p className="mt-2 text-sm text-muted-foreground">شروع دوره از یکی از درس‌های زیر انجام می‌شود.</p></div>
+          <div><h2 id={COURSE_LESSONS_SECTION_ID} className="text-2xl font-black">درس‌های دوره</h2><p className="mt-2 text-sm text-muted-foreground">شروع دوره از یکی از درس‌های زیر انجام می‌شود.</p></div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {course.has_access && <Link href={studentHomeworkPath({ course: course.id })} className="ghost-button rounded-full px-4 py-1.5 text-sm">تکالیف این دوره</Link>}
             <span className="rounded-full bg-secondary-soft px-3 py-1 text-sm text-muted-foreground">{course.lessons_count.toLocaleString("fa-IR")} درس</span>
@@ -239,8 +223,13 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
 
         {!course.has_access ? (
           <div className="surface-card rounded-2xl p-8 text-center"><HiLockClosed className="mx-auto size-8 text-brand-accent" /><p className="mt-4 font-bold">ابتدا دسترسی دوره را فعال کنید.</p></div>
-        ) : loading ? (
+        ) : lessonsLoading && !lessons ? (
           <AsyncState message="در حال دریافت درس‌ها..." />
+        ) : lessonsEntry?.status === "failed" && !lessons ? (
+          <AsyncState
+            message={lessonsEntry.error ?? "دریافت درس‌های دوره ناموفق بود."}
+            retry={() => void dispatch(fetchCourseLessons({ courseId, page, force: true }))}
+          />
         ) : !lessons?.results.length ? (
           <AsyncState message="هنوز درسی برای این دوره منتشر نشده است." />
         ) : (
@@ -258,7 +247,7 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
                 />
               ))}
             </ol>
-            <Pagination currentPage={page} count={lessons.count} resultsCount={lessons.results.length} next={lessons.next} previous={lessons.previous} onPageChange={setPage} loading={loading} ariaLabel="صفحه‌بندی درس‌های دوره" />
+            <Pagination currentPage={page} count={lessons.count} resultsCount={lessons.results.length} next={lessons.next} previous={lessons.previous} onPageChange={setPage} loading={lessonsLoading} ariaLabel="صفحه‌بندی درس‌های دوره" />
           </>
         )}
       </section>
@@ -268,10 +257,10 @@ export default function StudentCourseDetailPage({ courseId }: { courseId: number
 
 function LessonCard({ lesson, busy, active, feedback, action, toggle }: {
   lesson: Lesson;
-  busy: { id: number; action: "start" | "complete" } | null;
+  busy: { id: number; action: LessonAction } | null;
   active: boolean;
   feedback?: { type: "success" | "error"; text: string };
-  action: (lesson: Lesson, action: "start" | "complete") => void;
+  action: (lesson: Lesson, action: LessonAction) => void;
   toggle: () => void;
 }) {
   const media = [

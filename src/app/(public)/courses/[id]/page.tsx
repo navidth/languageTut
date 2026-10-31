@@ -1,43 +1,30 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { HiCollection, HiLockClosed, HiSparkles } from "react-icons/hi";
+import { HiCollection, HiSparkles } from "react-icons/hi";
 import CourseBackLink from "@/components/courses/CourseBackLink";
+import CourseLessonList from "@/components/courses/CourseLessonList";
 import CourseStartAction from "@/components/courses/CourseStartAction";
 import MediaGallery from "@/components/media/MediaGallery";
-import EmptyState from "@/components/ui/EmptyState";
-import Pagination from "@/components/ui/Pagination";
-import { BACKEND_BASE_URL } from "@/lib/apiClient";
-import type { Course, Lesson, PaginatedLessons } from "@/lib/courses";
-import { formatCoursePrice, formatCourseType } from "@/lib/coursePresentation";
-import { formatPersianDate } from "@/lib/date";
-import { parsePageParam } from "@/lib/pagination";
-import { formatSkillName } from "@/lib/skillPresentation";
+import { formatCoursePrice, formatCourseType } from "@/lib/presentation/course";
+import { formatPersianDate } from "@/lib/utils/date";
+import { publicCoursesApi } from "@/lib/services/publicCoursesApi";
+import { coursePath } from "@/lib/utils/routes";
+import { COURSE_LESSONS_SECTION_ID } from "@/constants/routes";
 
-type Props = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ lessonPage?: string | string[] }>;
-};
+type Props = { params: Promise<{ id: string }> };
 
+// Built ahead (or on the first visit), then regenerated in the background.
+// The page reads no search params, so it stays static.
 export const revalidate = 300;
 
-const getCourse = cache(async (id: string): Promise<Course | null> => {
-  const response = await fetch(`${BACKEND_BASE_URL}/api/courses/${id}/`, {
-    next: { revalidate: 300 },
-  });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error("دریافت اطلاعات دوره ناموفق بود.");
-  return response.json();
-});
+// generateMetadata and the page share one request.
+const getCourse = cache(publicCoursesApi.get);
 
-async function getCourseLessons(id: string, page: number): Promise<PaginatedLessons | null> {
-  const response = await fetch(`${BACKEND_BASE_URL}/api/courses/${id}/lessons/?page=${page}`, {
-    next: { revalidate: 300 },
-  });
-
-  if (response.status === 401 || response.status === 403) return null;
-  if (!response.ok) throw new Error("دریافت درس‌های دوره از سرور ناموفق بود.");
-  return response.json();
+/** The first page of courses is built ahead; the rest on their first visit. */
+export async function generateStaticParams() {
+  const courses = await publicCoursesApi.list(1).catch(() => null);
+  return courses?.results.map((course) => ({ id: String(course.id) })) ?? [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -49,24 +36,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: course.title,
     description: description.slice(0, 160),
-    alternates: { canonical: `/courses/${id}` },
+    alternates: { canonical: coursePath(id) },
     openGraph: {
       title: course.title,
       description,
-      url: `/courses/${id}`,
+      url: coursePath(id),
       type: "article",
     },
   };
 }
 
-export default async function CoursePage({ params, searchParams }: Props) {
+export default async function CoursePage({ params }: Props) {
   const { id } = await params;
-  const { lessonPage: lessonPageParam } = await searchParams;
-  const lessonPage = parsePageParam(lessonPageParam);
   const course = await getCourse(id);
   if (!course) notFound();
 
-  const lessons = await getCourseLessons(id, lessonPage);
+  const lessons = await publicCoursesApi.lessons(id);
   const courseType = formatCourseType(course.course_type);
   const available = course.is_active && !course.deleted_at;
   const jsonLd = {
@@ -173,44 +158,15 @@ export default async function CoursePage({ params, searchParams }: Props) {
         </dl>
       </section>
 
-      <section className="mt-10" aria-labelledby="course-lessons-title">
+      <section className="mt-10" aria-labelledby={COURSE_LESSONS_SECTION_ID}>
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 id="course-lessons-title" className="text-2xl font-black">درس‌های دوره</h2>
+          <h2 id={COURSE_LESSONS_SECTION_ID} className="text-2xl font-black">درس‌های دوره</h2>
           <span className="rounded-full bg-secondary-soft px-3 py-1 text-sm text-muted-foreground">
             {(lessons?.count ?? course.lessons_count).toLocaleString("fa-IR")} درس
           </span>
         </div>
 
-        {!lessons ? (
-          <div className="surface-card rounded-2xl p-8 text-center">
-            <HiLockClosed className="mx-auto size-8 text-brand-accent" aria-hidden="true" />
-            <p className="mt-4 font-bold">فهرست درس‌ها برای این حساب در دسترس نیست.</p>
-            <p className="mt-2 text-sm text-muted-foreground">برای مشاهده محتوای دوره وارد شوید یا دسترسی دوره را فعال کنید.</p>
-          </div>
-        ) : lessons.results.length === 0 ? (
-          <EmptyState
-            icon={HiCollection}
-            headingLevel="h3"
-            title="هنوز درسی منتشر نشده است"
-            description="درس‌های این دوره به‌زودی اضافه می‌شوند."
-          />
-        ) : (
-          <>
-            <ol className="space-y-4">
-              {lessons.results.map((lesson) => <LessonItem key={lesson.id} lesson={lesson} />)}
-            </ol>
-            <Pagination
-              currentPage={lessonPage}
-              count={lessons.count}
-              resultsCount={lessons.results.length}
-              next={lessons.next}
-              previous={lessons.previous}
-              basePath={`/courses/${id}`}
-              pageParam="lessonPage"
-              ariaLabel="صفحه‌بندی درس‌های دوره"
-            />
-          </>
-        )}
+        <CourseLessonList courseId={course.id} initialLessons={lessons} />
       </section>
     </article>
   );
@@ -222,39 +178,5 @@ function CourseInfo({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1.5 text-sm font-bold text-foreground">{value}</dd>
     </div>
-  );
-}
-
-function LessonItem({ lesson }: { lesson: Lesson }) {
-  const skill = formatSkillName(lesson.skill_detail.name);
-
-  return (
-    <li className="surface-card rounded-2xl p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="rounded-full bg-secondary-soft px-3 py-1 text-sm font-bold text-brand-secondary dark:text-white">
-          {skill}
-        </span>
-        <span className="text-sm text-muted-foreground">درس {lesson.order.toLocaleString("fa-IR")}</span>
-      </div>
-
-      <h3 className="mt-4 text-xl font-bold">{lesson.title}</h3>
-      <p className="mt-3 whitespace-pre-line leading-8 text-muted-foreground">{lesson.content}</p>
-
-      {(lesson.audio_url || lesson.video_url || lesson.attachment_url) && (
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
-          {lesson.audio_url && <MediaLink href={lesson.audio_url} label="فایل صوتی" />}
-          {lesson.video_url && <MediaLink href={lesson.video_url} label="ویدئو" />}
-          {lesson.attachment_url && <MediaLink href={lesson.attachment_url} label="پیوست درس" />}
-        </div>
-      )}
-    </li>
-  );
-}
-
-function MediaLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="ghost-button rounded-lg px-3 py-2 text-sm">
-      {label}
-    </a>
   );
 }

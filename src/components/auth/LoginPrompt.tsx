@@ -2,7 +2,7 @@
 
 import { HiLockClosed } from "react-icons/hi";
 import { LoadingContent } from "@/components/ui/PulseLoader";
-import { useAuthFlow } from "./AuthFlowProvider";
+import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
 
 type LoginPromptProps = {
   message: string;

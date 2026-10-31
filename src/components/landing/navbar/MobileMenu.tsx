@@ -1,6 +1,7 @@
-import { menuItems } from "@/lib/constants";
+import { menuItems } from "@/constants/navigation";
 import Link from "next/link";
-import { activeMenuItemClass, idleMenuItemClass, useActiveMenuLink } from "./menuState";
+import { activeMenuItemClass, idleMenuItemClass } from "@/constants/ui";
+import { useActiveMenuLink } from "@/hooks/useActiveMenuLink";
 
 // Floating bottom bar below md, in the same pill style as the desktop menu.
 // Items are icons only; the current one opens into a pill with its label.

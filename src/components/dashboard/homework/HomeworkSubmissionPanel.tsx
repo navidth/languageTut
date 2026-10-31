@@ -8,30 +8,20 @@ import {
 } from "react";
 import { HiDownload, HiPaperClip, HiTrash, HiUpload } from "react-icons/hi";
 import LoginPrompt from "@/components/auth/LoginPrompt";
-import { useSessionState } from "@/components/auth/useSessionState";
+import { useSessionState } from "@/hooks/useSessionState";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { Skeleton } from "@/components/ui/Skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
-import type { ApiFieldErrors } from "@/lib/apiErrors";
-import { formatPersianDateTime } from "@/lib/date";
-import { formatDecimal } from "@/lib/format";
-import type {
-  Homework,
-  HomeworkSubmission,
-  HomeworkSubmissionSummary,
-} from "@/lib/homeworkApi";
-import {
-  canDeleteHomeworkSubmission,
-  canSubmitHomework,
-  describeHomeworkStatus,
-  isSubmissionWindowOpen,
-} from "@/lib/homeworkPresentation";
+import type { ApiFieldErrors } from "@/types/api";
+import { formatPersianDateTime } from "@/lib/utils/date";
+import { formatDecimal } from "@/lib/utils/format";
+import type { Homework, HomeworkSubmission, HomeworkSubmissionSummary } from "@/types/homework";
+import { canDeleteHomeworkSubmission, canSubmitHomework, describeHomeworkStatus, isSubmissionWindowOpen } from "@/lib/presentation/homework";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchHomeworkSubmission } from "@/store/homeworkSlice";
-import {
-  useHomeworkSubmission,
-  type SubmissionAction,
-} from "./useHomeworkSubmission";
+import { useHomeworkSubmission } from "@/hooks/useHomeworkSubmission";
+import { type SubmissionAction } from "@/types/homework";
+import { FIELD_CLASS_NAME } from "@/constants/ui";
 
 export default function HomeworkSubmissionPanel({
   homework,
@@ -419,7 +409,7 @@ function SubmissionForm({
         rows={4}
         disabled={disabled}
         onChange={(event) => setNotes(event.target.value)}
-        className="w-full rounded-xl border border-input bg-card p-3 text-sm leading-7"
+        className={`${FIELD_CLASS_NAME} text-sm leading-7`}
         placeholder="اگر نکته‌ای برای مدرس دارید، اینجا بنویسید."
         dir="auto"
         aria-invalid={Boolean(notesError)}

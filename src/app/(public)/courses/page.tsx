@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import CourseGrid from "@/components/courses/CourseGrid";
 import Pagination from "@/components/ui/Pagination";
-import { BACKEND_BASE_URL } from "@/lib/apiClient";
-import type { PaginatedCourses } from "@/lib/courses";
-import { parsePageParam } from "@/lib/pagination";
+import type { PaginatedCourses } from "@/types/course";
+import { parsePageParam } from "@/lib/utils/pagination";
+import { publicCoursesApi } from "@/lib/services/publicCoursesApi";
 
 type Props = { searchParams: Promise<{ page?: string | string[] }> };
 
+// The page number is a search param, so the page renders per request (its
+// links stay crawlable); the course list itself comes from the cache.
 export const revalidate = 300;
 
 export const metadata: Metadata = {
@@ -18,9 +20,7 @@ export const metadata: Metadata = {
 
 async function getCourses(page: number): Promise<PaginatedCourses> {
   try {
-    const response = await fetch(`${BACKEND_BASE_URL}/api/courses/?page=${page}`, { next: { revalidate: 300 } });
-    if (!response.ok) throw new Error("دریافت دوره‌ها از سرور ناموفق بود.");
-    return response.json();
+    return await publicCoursesApi.list(page);
   } catch {
     // Keep builds and cached pages available while the API is restarting.
     return { count: 0, next: null, previous: null, results: [] };

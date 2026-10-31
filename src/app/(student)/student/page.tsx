@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import StudentDashboardUI from "@/components/dashboard/student/StudentDashboardUI"
+import StudentDashboardUI from "@/components/dashboard/student/StudentDashboardUI";
 
 export const metadata: Metadata = { title: "داشبورد دانش‌آموز" };
 

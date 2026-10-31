@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeStore } from "@/store";
-import { fetchAuthFeatures, logout, selectSmsEnabled, updateProfile } from "./authSlice";
+import { fetchAuthFeatures, logout, selectSmsEnabled, updateProfile } from "@/store/authSlice";
 
 const mocks = vi.hoisted(() => ({
   features: vi.fn(),
@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
   replaceMe: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/auth")>();
+vi.mock("@/lib/services/authApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/authApi")>();
   return { ...actual, authApi: { ...actual.authApi, ...mocks } };
 });
 

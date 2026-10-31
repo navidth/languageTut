@@ -4,14 +4,12 @@ import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { Spinner } from "flowbite-react";
 import { HiArrowLeft, HiCheck, HiExclamation, HiLockClosed } from "react-icons/hi";
-import { authApi } from "@/lib/auth";
-import { getApiErrorMessage, normalizeApiError } from "@/lib/apiErrors";
-import { useAuthFlow } from "./AuthFlowProvider";
-import { authInputClassName, fieldDescription, FormField, PasswordToggle } from "./AuthFormFields";
-
-type Stage = "form" | "done" | "invalid";
-
-const PASSWORD_HINT = "حداقل ۸ کاراکتر";
+import { authApi } from "@/lib/services/authApi";
+import { getApiErrorMessage, normalizeApiError } from "@/lib/services/apiErrors";
+import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
+import { authInputClassName, authPasswordPaddingClassName, fieldDescription, FormField, PasswordToggle } from "./AuthFormFields";
+import type { ResetPasswordStage } from "@/types/auth";
+import { PASSWORD_HINT } from "@/constants/auth";
 
 /**
  * Sets a new password from the `uid` and `token` in a reset email link.
@@ -20,7 +18,7 @@ const PASSWORD_HINT = "حداقل ۸ کاراکتر";
  */
 export default function ResetPasswordPage({ uid, token }: { uid: string; token: string }) {
   const { startAuthFlow, busy } = useAuthFlow();
-  const [stage, setStage] = useState<Stage>(uid && token ? "form" : "invalid");
+  const [stage, setStage] = useState<ResetPasswordStage>(uid && token ? "form" : "invalid");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -106,7 +104,7 @@ export default function ResetPasswordPage({ uid, token }: { uid: string; token: 
                   autoFocus
                   aria-invalid={Boolean(fieldError)}
                   aria-describedby={fieldDescription("reset-password", fieldError, PASSWORD_HINT)}
-                  className={`${authInputClassName} pe-11 ps-12 text-left`}
+                  className={`${authInputClassName} ${authPasswordPaddingClassName}`}
                 />
                 <PasswordToggle visible={visible} onToggle={() => setVisible((current) => !current)} />
               </FormField>

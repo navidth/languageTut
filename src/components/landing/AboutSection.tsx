@@ -1,24 +1,6 @@
-import { HiAcademicCap, HiSparkles, HiUserGroup } from "react-icons/hi";
 import BrandMark from "@/components/ui/BrandMark";
 import Reveal from "@/components/ui/Reveal";
-
-const principles = [
-  {
-    icon: HiAcademicCap,
-    title: "یادگیری هدفمند",
-    text: "هر تمرین باید به یک نیاز روشن در مسیر زبان‌آموز پاسخ دهد.",
-  },
-  {
-    icon: HiUserGroup,
-    title: "همراهی انسانی",
-    text: "فناوری ابزار مدرس و زبان‌آموز است، نه جایگزین ارتباط میان آن‌ها.",
-  },
-  {
-    icon: HiSparkles,
-    title: "هوشمندی کاربردی",
-    text: "هوش مصنوعی باید انتخاب قدم بعدی را دقیق‌تر و ساده‌تر کند.",
-  },
-] as const;
+import { aboutPrinciples } from "@/constants/landing";
 
 export default function AboutSection() {
   return (
@@ -54,7 +36,7 @@ export default function AboutSection() {
               </p>
 
               <div className="mt-9 space-y-5">
-                {principles.map(({ icon: Icon, title, text }) => (
+                {aboutPrinciples.map(({ icon: Icon, title, text }) => (
                   <div key={title} className="flex gap-4">
                     <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-brand-secondary dark:text-brand-accent">
                       <Icon className="size-5" aria-hidden="true" />

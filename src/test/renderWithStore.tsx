@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { render, type RenderOptions } from "@testing-library/react";
 import { Provider } from "react-redux";
-import type { User } from "@/lib/auth";
+import type { User } from "@/types/auth";
 import { makeStore, type AppStore } from "@/store";
 import { login } from "@/store/authSlice";
 

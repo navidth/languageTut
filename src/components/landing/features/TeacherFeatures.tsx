@@ -1,28 +1,8 @@
 import Link from "next/link";
 import {
   HiArrowLeft,
-  HiOutlineAnnotation,
-  HiOutlinePresentationChartLine,
-  HiOutlineUserGroup,
 } from "react-icons/hi";
-
-const teacherTools = [
-  {
-    icon: HiOutlineUserGroup,
-    title: "مدیریت کلاس‌ها و زبان‌آموزان",
-    text: "کلاس‌ها و زبان‌آموزان هر کلاس را از یک فضای یکپارچه مدیریت کنید.",
-  },
-  {
-    icon: HiOutlinePresentationChartLine,
-    title: "دید روشن به روند عملکرد",
-    text: "روند یادگیری هر زبان‌آموز را سریع‌تر ببینید و نقاط نیازمند توجه را زودتر پیدا کنید.",
-  },
-  {
-    icon: HiOutlineAnnotation,
-    title: "بازخورد دقیق‌تر",
-    text: "بر اساس عملکرد هر فرد، بازخوردی بدهید که به قدم بعدی او کمک کند.",
-  },
-] as const;
+import { teacherTools } from "@/constants/landing";
 
 export default function TeacherFeatures() {
   return (

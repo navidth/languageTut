@@ -1,15 +1,7 @@
-import {
-  toSubmissionSummary,
-  type Homework,
-  type HomeworkSubmission,
-  type HomeworkSubmissionSummary,
-} from "@/lib/homeworkApi";
-import type {
-  ExamSubmission,
-  Paginated,
-  PracticeTest,
-  StudentAnswer,
-} from "@/lib/studentApi";
+import { toSubmissionSummary } from "@/lib/presentation/homework";
+import { type Homework, type HomeworkSubmission, type HomeworkSubmissionSummary } from "@/types/homework";
+import type { ExamSubmission, PracticeTest, StudentAnswer } from "@/types/exam";
+import type { Paginated } from "@/types/api";
 
 export function buildPage<T>(
   results: T[],

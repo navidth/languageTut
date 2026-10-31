@@ -4,37 +4,21 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   FaBookOpen,
-  FaHeadphones,
-  FaMicrophone,
-  FaPen,
   FaPlus,
   FaTrash,
 } from "react-icons/fa";
-import type { IconType } from "react-icons";
-import {
-  SKILL_NAMES,
-  type Skill,
-  type SkillName,
-} from "@/lib/skills";
-import {
-  clearSkillFeedback,
-  createSkill,
-  deleteSkill,
-  fetchSkills,
-  updateSkill,
-} from "@/store/skillsSlice";
+import { SKILL_NAMES } from "@/constants/skills";
+import { type Skill, type SkillName } from "@/types/skill";
+import { clearSkillFeedback, createSkill, deleteSkill, fetchSkills, updateSkill } from "@/store/skillsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AsyncState from "@/components/ui/AsyncState";
 import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonGrid } from "@/components/ui/Skeleton";
 import Pagination from "@/components/ui/Pagination";
-import { skillDescriptions, skillLabels } from "@/lib/skillPresentation";
-
-const skillIcons: Record<SkillName, IconType> = {
-  listening: FaHeadphones,
-  reading: FaBookOpen,
-  writing: FaPen,
-  speaking: FaMicrophone,
-};
+import { skillDescriptions, skillLabels } from "@/constants/skills";
+import { skillIcons } from "@/constants/skills";
+import { FIELD_CLASS_NAME } from "@/constants/ui";
 
 export default function SkillsDashboard() {
   const dispatch = useAppDispatch();
@@ -145,10 +129,16 @@ export default function SkillsDashboard() {
         <Feedback color="error" text={mutationError} />
       )}
 
-      {loading && <LoadingState />}
+      {loading && (
+        <SkeletonGrid
+          label="در حال دریافت مهارت‌ها"
+          count={4}
+          className="grid gap-5 md:grid-cols-2"
+        />
+      )}
 
       {listStatus === "failed" && (
-        <ErrorState
+        <AsyncState
           message={listError ?? "دریافت مهارت‌ها ناموفق بود."}
           retry={() => void dispatch(fetchSkills(page))}
         />
@@ -338,7 +328,7 @@ function SkillForm({
               onChange={(event) =>
                 onNameChange(event.target.value as SkillName)
               }
-              className="w-full rounded-xl border border-input bg-card px-4 py-3"
+              className={FIELD_CLASS_NAME}
               disabled={loading}
             >
               {SKILL_NAMES.map((skillName) => (
@@ -363,7 +353,7 @@ function SkillForm({
                     : event.target.valueAsNumber,
                 )
               }
-              className="w-full rounded-xl border border-input bg-card px-4 py-3"
+              className={FIELD_CLASS_NAME}
               disabled={loading}
             />
           </label>
@@ -386,28 +376,6 @@ function SkillForm({
           </div>
         </form>
       </div>
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div
-      className="grid gap-5 md:grid-cols-2"
-      role="status"
-      aria-label="در حال دریافت مهارت‌ها"
-    >
-      {[1, 2, 3, 4].map((item) => (
-        <div
-          key={item}
-          className="h-56 animate-pulse rounded-3xl border border-border bg-card p-6"
-        >
-          <div className="size-14 rounded-2xl bg-secondary" />
-          <div className="mt-5 h-6 w-1/3 rounded bg-secondary" />
-          <div className="mt-4 h-4 w-full rounded bg-secondary" />
-          <div className="mt-2 h-4 w-2/3 rounded bg-secondary" />
-        </div>
-      ))}
     </div>
   );
 }
@@ -436,27 +404,6 @@ function SkillsEmptyState({
         )
       }
     />
-  );
-}
-
-function ErrorState({
-  message,
-  retry,
-}: {
-  message: string;
-  retry: () => void;
-}) {
-  return (
-    <div className="feedback-error rounded-3xl p-10 text-center">
-      <p>{message}</p>
-      <button
-        type="button"
-        onClick={retry}
-        className="secondary-button mt-5 rounded-xl px-5 py-2"
-      >
-        تلاش دوباره
-      </button>
-    </div>
   );
 }
 

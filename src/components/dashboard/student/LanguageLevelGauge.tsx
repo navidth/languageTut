@@ -1,20 +1,12 @@
-type Level = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-
-const levelMap: Record<Level, number> = {
-  A1: 20,
-  A2: 35,
-  B1: 55,
-  B2: 70,
-  C1: 85,
-  C2: 100,
-};
+import type { CurrentLevel } from "@/types/level";
+import { LEVEL_PROGRESS } from "@/constants/levels";
 
 export function LanguageLevelGauge({
   level = 'A2',
 }: {
-  level: Level;
+  level: CurrentLevel;
 }) {
-  const percentage = levelMap[level];
+  const percentage = LEVEL_PROGRESS[level];
   const radius = 90;
   const circumference = Math.PI * radius; // half circle
   const strokeDashoffset =

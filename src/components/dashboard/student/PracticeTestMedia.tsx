@@ -1,5 +1,5 @@
 import MediaGallery, { normalizeMediaAssets } from "@/components/media/MediaGallery";
-import type { PracticeTestMedia as PracticeTestMediaValue } from "@/lib/studentApi";
+import type { PracticeTestMedia as PracticeTestMediaValue } from "@/types/exam";
 
 export function normalizePracticeTestMedia(
   mediaItems: PracticeTestMediaValue[] | undefined,

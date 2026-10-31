@@ -1,7 +1,7 @@
 "use client";
 
 import { OTPInput, type SlotProps } from "input-otp";
-import { normalizeCode } from "./CodeInput";
+import { normalizeCode } from "@/lib/utils/normalize";
 
 export type OtpInputProps = {
   /** Id of the real input, for `<label htmlFor>`. */
@@ -57,7 +57,7 @@ export default function OtpInput({
         disabled={disabled}
         aria-invalid={invalid || undefined}
         pushPasswordManagerStrategy="none"
-        containerClassName="flex items-center justify-end gap-2 has-disabled:opacity-60 sm:gap-2.5"
+        containerClassName="flex items-center justify-center gap-2 has-disabled:opacity-60 sm:gap-2.5"
         render={({ slots }) => (
           <>
             {slots.map((slot, index) => (
@@ -71,20 +71,22 @@ export default function OtpInput({
   );
 }
 
-// Focus and error use rings, not border colours: the global
-// `* { border-color }` rule in globals.css overrides border colour utilities.
+// Focus uses a ring. An error turns the border red, which needs `!`: the
+// global `* { border-color }` rule in globals.css beats border colour
+// utilities.
 function Slot({ char, isActive, hasFakeCaret, invalid }: SlotProps & { invalid: boolean }) {
   return (
     <div
       data-active={isActive || undefined}
-      className={`relative grid aspect-square min-w-0 max-w-12 flex-1 place-items-center rounded-xl border text-lg font-black text-foreground transition-[box-shadow,background-color] duration-150 sm:max-w-13 sm:text-xl ${
+      data-invalid={invalid || undefined}
+      className={`relative grid aspect-square min-w-0 max-w-12 flex-1 place-items-center rounded-xl border text-lg font-black text-foreground transition-[box-shadow,background-color,border-color] duration-150 sm:max-w-13 sm:text-xl ${
         char || isActive ? "bg-card" : "bg-secondary-soft/35"
-      } ${
+      } ${invalid ? "border-destructive!" : ""} ${
         isActive
-          ? "ring-2 ring-brand-accent shadow-[0_0_0_6px_var(--accent-soft)]"
-          : invalid
-            ? "ring-2 ring-destructive/70"
-            : ""
+          ? invalid
+            ? "ring-4 ring-destructive/15"
+            : "ring-2 ring-brand-accent shadow-[0_0_0_6px_var(--accent-soft)]"
+          : ""
       }`}
     >
       {char}

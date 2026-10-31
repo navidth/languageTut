@@ -1,31 +1,13 @@
 import Link from "next/link";
-import type { IconType } from "react-icons";
 import {
   HiAcademicCap,
   HiArrowLeft,
-  HiOutlineAdjustments,
-  HiOutlineChartBar,
-  HiOutlineChatAlt2,
-  HiOutlineCollection,
-  HiOutlineMap,
-  HiOutlineTrendingUp,
   HiUserGroup,
 } from "react-icons/hi";
 import AuthModalButton from "@/components/auth/AuthModalButton";
 import Reveal from "@/components/ui/Reveal";
-import { LearnerPreview, TeacherPreview } from "./audiences/AudiencePreviews";
-
-const learnerBenefits: { icon: IconType; text: string }[] = [
-  { icon: HiOutlineMap, text: "مسیر متناسب با سطح و هدف شما" },
-  { icon: HiOutlineAdjustments, text: "تمرین هدفمند به‌جای محتوای پراکنده" },
-  { icon: HiOutlineTrendingUp, text: "مشاهده روند پیشرفت در طول مسیر" },
-];
-
-const teacherBenefits: { icon: IconType; text: string }[] = [
-  { icon: HiOutlineCollection, text: "مدیریت کلاس‌ها و زبان‌آموزان" },
-  { icon: HiOutlineChartBar, text: "دسترسی سریع‌تر به روند عملکرد" },
-  { icon: HiOutlineChatAlt2, text: "بازخورد دقیق‌تر با ابزارهای هوشمند" },
-];
+import { LearnerPreview, TeacherPreview } from "@/components/landing/audiences/AudiencePreviews";
+import { learnerBenefits, teacherBenefits } from "@/constants/landing";
 
 // Each card is copy plus a cropped product preview. Phones stack the preview
 // under the copy; from md the cards become full-width rows with the preview

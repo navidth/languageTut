@@ -3,17 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithStore } from "@/test/renderWithStore";
-import TestDetailPage from "./TestDetailPage";
+import TestDetailPage from "@/components/dashboard/student/TestDetailPage";
 
 const mocks = vi.hoisted(() => ({
   test: vi.fn(),
   startTest: vi.fn(),
   submitTest: vi.fn(),
-  course: vi.fn(),
 }));
+const courseMocks = vi.hoisted(() => ({ get: vi.fn() }));
 
-vi.mock("@/lib/studentApi", () => ({
+vi.mock("@/lib/services/studentApi", () => ({
   studentApi: mocks,
+}));
+vi.mock("@/lib/services/coursesApi", () => ({
+  coursesApi: courseMocks,
 }));
 
 function apiError(status: number, data: unknown) {
@@ -328,7 +331,7 @@ describe("TestDetailPage", () => {
     mocks.test.mockRejectedValue(
       apiError(403, { detail: "Enroll in this course to take its tests." }),
     );
-    mocks.course.mockResolvedValue({ id: 18, title: "دوره آیلتس", has_access: false });
+    courseMocks.get.mockResolvedValue({ id: 18, title: "دوره آیلتس", has_access: false });
 
     renderWithStore(<TestDetailPage id={64} courseId={18} />);
 
@@ -338,6 +341,6 @@ describe("TestDetailPage", () => {
     expect(
       await screen.findByRole("link", { name: "خرید دوره «دوره آیلتس»" }),
     ).toHaveAttribute("href", "/student/all-courses/18");
-    expect(mocks.course).toHaveBeenCalledWith(18);
+    expect(courseMocks.get).toHaveBeenCalledWith(18);
   });
 });

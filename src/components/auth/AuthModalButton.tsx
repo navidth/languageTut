@@ -2,8 +2,8 @@
 
 import { Button } from "flowbite-react";
 import { LoadingContent } from "@/components/ui/PulseLoader";
-import type { AuthIntent } from "@/lib/authFlow";
-import { useAuthFlow } from "./AuthFlowProvider";
+import type { AuthIntent } from "@/types/auth";
+import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
 
 type Props = {
   children?: React.ReactNode;

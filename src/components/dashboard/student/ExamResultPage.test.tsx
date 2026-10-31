@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/lib/apiErrors";
+import { ApiError } from "@/lib/services/apiErrors";
 import {
   buildAnswer,
   buildExamSubmission,
@@ -9,7 +9,7 @@ import {
   buildPracticeTest,
 } from "@/test/fixtures";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
-import ExamResultPage from "./ExamResultPage";
+import ExamResultPage from "@/components/dashboard/student/ExamResultPage";
 
 const studentMocks = vi.hoisted(() => ({
   mySubmissions: vi.fn(),
@@ -19,7 +19,7 @@ const studentMocks = vi.hoisted(() => ({
 }));
 const authFlow = vi.hoisted(() => ({ startAuthFlow: vi.fn() }));
 
-vi.mock("@/lib/studentApi", () => ({ studentApi: studentMocks }));
+vi.mock("@/lib/services/studentApi", () => ({ studentApi: studentMocks }));
 vi.mock("@/components/auth/AuthFlowProvider", () => ({
   useAuthFlow: () => ({ startAuthFlow: authFlow.startAuthFlow, busy: false }),
 }));

@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
@@ -11,7 +9,6 @@ import AuthModalButton from "../auth/AuthModalButton";
 // characters never pop into an empty space.
 import learnerPose from "../../../public/images/character/03-celebrate.png";
 import teacherPose from "../../../public/images/character/09-confident.png";
-import { useWindowSize } from "@/hooks/useWindowSize";
 import { Button } from "flowbite-react";
 
 const poseSizes =
@@ -29,7 +26,6 @@ function enter(ms: number) {
 }
 
 export default function HeroSplit() {
-  const { width } = useWindowSize();
   return (
     <section className="relative min-h-[720px] w-full overflow-hidden md:min-h-[680px]">
       <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-2">
@@ -49,7 +45,10 @@ export default function HeroSplit() {
                 {...enter(0)}
                 className="hero-enter brand-badge mb-6  max-w-full rounded-full px-3 py-2 text-xs font-bold min-[375px]:inline-flex md:hidden lg:inline-flex xl:px-4 whitespace-nowrap"
               >
-                {width > 400 ? "مسیر شخصی شما برای پیشرفت" : "مسیر پیشرفت شما"}
+                {/* Swapped in CSS rather than by measuring the window, so the
+                    server HTML already matches the screen. */}
+                <span className="min-[401px]:hidden">مسیر پیشرفت شما</span>
+                <span className="hidden min-[401px]:inline">مسیر شخصی شما برای پیشرفت</span>
               </span>
               <h1
                 {...enter(80)}
@@ -119,11 +118,10 @@ export default function HeroSplit() {
               </h1>
               <p
                 {...enter(280)}
-                className="hero-enter mb-6 text-xs sm:text-bsae text-white/75"
+                className="hero-enter mb-6 text-xs sm:text-base text-white/75"
               >
-                {width > 400
-                  ? "کلاس ها و شاگردانتان را هوشمند مدیریت کنید"
-                  : "مدیریت هوشمند کلاس‌ها"}
+                <span className="min-[401px]:hidden">مدیریت هوشمند کلاس‌ها</span>
+                <span className="hidden min-[401px]:inline">کلاس ها و شاگردانتان را هوشمند مدیریت کنید</span>
               </p>
               <div {...enter(360)} className="hero-enter">
                 <Button href="/teacher" className="brand-button-inverse rounded-full font-semibold">

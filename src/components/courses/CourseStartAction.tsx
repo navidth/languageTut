@@ -1,45 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiCheckCircle, HiLockClosed } from "react-icons/hi";
 import { useAuthFlow } from "@/components/auth/AuthFlowProvider";
 import { LoadingContent } from "@/components/ui/PulseLoader";
-import { getApiErrorMessage } from "@/lib/apiErrors";
-import { coursesApi, type Course } from "@/lib/courses";
-import { studentApi } from "@/lib/studentApi";
-import { useAppSelector } from "@/store/hooks";
+import { getApiErrorMessage } from "@/lib/services/apiErrors";
+import { openPaymentPage } from "@/lib/utils/payment";
+import { activateCourse, fetchCourseDetail, selectCourseDetail } from "@/store/coursesSlice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import type { Course } from "@/types/course";
+import { studentCoursePath } from "@/lib/utils/routes";
+import { COURSE_LESSONS_SECTION_ID } from "@/constants/routes";
 
+/**
+ * The start button on the public course page. The server renders the course
+ * without a user; once a student is known, access comes from the store.
+ */
 export default function CourseStartAction({ initialCourse }: { initialCourse: Course }) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { startAuthFlow, busy: authBusy } = useAuthFlow();
   const status = useAppSelector((state) => state.auth.status);
   const user = useAppSelector((state) => state.auth.user);
-  const [course, setCourse] = useState(initialCourse);
+  const course = useAppSelector((state) => selectCourseDetail(state, initialCourse.id)?.data) ?? initialCourse;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const courseRef = useRef(initialCourse);
-  const lastAccessCheckRef = useRef(0);
+  const authenticatedStudent = status === "authenticated" && user?.role === "student";
 
-  const refreshAccess = useCallback(async (force = false) => {
-    if (!force && Date.now() - lastAccessCheckRef.current < 30_000) {
-      return courseRef.current;
-    }
-    const latestCourse = await coursesApi.get(initialCourse.id);
-    courseRef.current = latestCourse;
-    lastAccessCheckRef.current = Date.now();
-    setCourse(latestCourse);
-    return latestCourse;
-  }, [initialCourse.id]);
-
+  // `has_access` in the server-rendered course is always false.
   useEffect(() => {
-    if (status !== "authenticated" || user?.role !== "student") return;
-    void refreshAccess(true).catch(() => undefined);
-  }, [refreshAccess, status, user?.role]);
-
-  function openLessons() {
-    router.push(`/student/all-courses/${course.id}#course-lessons-title`);
-  }
+    if (authenticatedStudent) void dispatch(fetchCourseDetail({ id: initialCourse.id }));
+  }, [authenticatedStudent, dispatch, initialCourse.id]);
 
   async function handleAction() {
     setError("");
@@ -56,27 +48,15 @@ export default function CourseStartAction({ initialCourse }: { initialCourse: Co
 
     setBusy(true);
     try {
-      const latest = await refreshAccess();
-      if (latest.has_access) {
-        openLessons();
+      const { course: latest, purchase } = await dispatch(activateCourse(course.id)).unwrap();
+      if (purchase?.payment_url) {
+        openPaymentPage(purchase.payment_url);
         return;
       }
-
-      const purchase = await studentApi.purchaseCourse(course.id);
-      if (purchase.payment_url) {
-        const paymentUrl = new URL(purchase.payment_url);
-        if (paymentUrl.protocol !== "https:" && paymentUrl.protocol !== "http:") {
-          throw new Error("نشانی درگاه پرداخت معتبر نیست.");
-        }
-        window.location.assign(paymentUrl.toString());
-        return;
+      if (!latest.has_access) {
+        throw new Error(purchase?.detail || "دسترسی دوره هنوز فعال نشده است.");
       }
-
-      const activated = await refreshAccess(true);
-      if (!activated.has_access) {
-        throw new Error(purchase.detail || "دسترسی دوره هنوز فعال نشده است.");
-      }
-      openLessons();
+      router.push(`${studentCoursePath(course.id)}#${COURSE_LESSONS_SECTION_ID}`);
     } catch (reason) {
       setError(getApiErrorMessage(reason, "شروع دوره ناموفق بود. دوباره تلاش کنید."));
     } finally {
@@ -84,18 +64,17 @@ export default function CourseStartAction({ initialCourse }: { initialCourse: Co
     }
   }
 
-  const authenticatedStudent = status === "authenticated" && user?.role === "student";
   const hasAccess = authenticatedStudent && course.has_access;
   const checkingAccount = status === "loading" || authBusy;
   const label = !user
-      ? "ورود و شروع دوره"
-      : user.role !== "student"
-        ? "ویژه دانش‌آموزان"
-        : hasAccess
-          ? "شروع یادگیری"
-          : course.is_free
-            ? "ثبت‌نام رایگان و شروع"
-            : "خرید و شروع دوره";
+    ? "ورود و شروع دوره"
+    : user.role !== "student"
+      ? "ویژه دانش‌آموزان"
+      : hasAccess
+        ? "شروع یادگیری"
+        : course.is_free
+          ? "ثبت‌نام رایگان و شروع"
+          : "خرید و شروع دوره";
 
   return (
     <div className="mt-5 border-t border-white/10 pt-4">

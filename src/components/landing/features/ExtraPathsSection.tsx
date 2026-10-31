@@ -1,29 +1,6 @@
 import Link from "next/link";
-import { HiArrowLeft, HiChartBar, HiOutlineChatAlt2, HiSparkles } from "react-icons/hi";
-
-const paths = [
-  {
-    icon: HiChartBar,
-    title: "آمادگی تخصصی IELTS",
-    text: "دوره‌ها، آزمون‌های آزمایشی و مسیر تخصصی آمادگی آیلتس.",
-    href: "/ielts",
-    available: false,
-  },
-  {
-    icon: HiSparkles,
-    title: "دستیار هوشمند یادگیری",
-    text: "تمرین، تحلیل پیشرفت و پیشنهاد مسیر با کمک هوش مصنوعی.",
-    href: "/ai",
-    available: false,
-  },
-  {
-    icon: HiOutlineChatAlt2,
-    title: "مشاوره آنلاین",
-    text: "راهنمایی برای انتخاب دوره و مسیر یادگیری، از راه تماس یا تلگرام.",
-    href: "/consultation",
-    available: true,
-  },
-] as const;
+import { HiArrowLeft } from "react-icons/hi";
+import { extraPaths } from "@/constants/landing";
 
 export default function ExtraPathsSection() {
   return (
@@ -40,7 +17,7 @@ export default function ExtraPathsSection() {
         </div>
 
         <ul className="mt-14 grid gap-5 md:grid-cols-3">
-          {paths.map(({ icon: Icon, title, text, href, available }) => (
+          {extraPaths.map(({ icon: Icon, title, text, href, available }) => (
             <li key={href}>
               <Link
                 href={href}

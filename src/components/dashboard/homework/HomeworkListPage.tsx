@@ -2,33 +2,26 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { HiClipboardList } from "react-icons/hi";
-import {
-  hasActiveSession,
-  useSessionState,
-} from "@/components/auth/useSessionState";
+import { hasActiveSession, useSessionState } from "@/hooks/useSessionState";
 import AsyncState from "@/components/ui/AsyncState";
 import Pagination from "@/components/ui/Pagination";
 import { SkeletonGrid } from "@/components/ui/Skeleton";
-import { HOMEWORK_SCOPES, type HomeworkScope } from "@/lib/homeworkApi";
-import { homeworkScopeLabels } from "@/lib/homeworkPresentation";
+import { HOMEWORK_SCOPES } from "@/constants/homework";
+import { type HomeworkScope } from "@/types/homework";
+import { homeworkScopeLabels } from "@/constants/homework";
 import { selectKnownCourseTitles } from "@/store/courseTitles";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchHomeworkList,
-  homeworkListKey,
-  type HomeworkListFilters,
-} from "@/store/homeworkSlice";
+import { fetchHomeworkList, homeworkListKey } from "@/store/homeworkSlice";
+import { type HomeworkListFilters } from "@/types/store";
 import { fetchStudentOverview } from "@/store/studentSlice";
-import HomeworkCard from "./HomeworkCard";
+import HomeworkCard from "@/components/dashboard/homework/HomeworkCard";
+import { FIELD_CLASS_NAME } from "@/constants/ui";
 
 type HomeworkListPageProps = {
   initialPage?: number;
   initialCourse?: number;
   initialScope?: HomeworkScope;
 };
-
-const selectClassName =
-  "w-full rounded-xl border border-input bg-card p-3 text-sm";
 
 export default function HomeworkListPage({
   initialPage = 1,
@@ -124,7 +117,7 @@ export default function HomeworkListPage({
                 ),
               })
             }
-            className={selectClassName}
+            className={`${FIELD_CLASS_NAME} text-sm`}
           >
             <option value="">همه تکالیف</option>
             {HOMEWORK_SCOPES.map((scope) => (
@@ -149,7 +142,7 @@ export default function HomeworkListPage({
                   : undefined,
               })
             }
-            className={selectClassName}
+            className={`${FIELD_CLASS_NAME} text-sm`}
           >
             <option value="">همه دوره‌ها</option>
             {courseOptions.map((course) => (

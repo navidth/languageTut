@@ -12,29 +12,19 @@ import {
 import PageMessage from "@/components/ui/PageMessage";
 import { Skeleton } from "@/components/ui/Skeleton";
 import StatusBadge, { toneTextClasses } from "@/components/ui/StatusBadge";
-import type { ApiErrorKind } from "@/lib/apiErrors";
-import { formatPersianDate, formatPersianDateTime } from "@/lib/date";
-import { formatDecimal } from "@/lib/format";
-import {
-  describeDueDate,
-  describeHomeworkStatus,
-  formatHomeworkScope,
-  homeworkStatusLabels,
-  homeworkStatusTones,
-  resolveHomeworkStatus,
-} from "@/lib/homeworkPresentation";
-import { ROUTES } from "@/lib/routes";
+import { formatPersianDate, formatPersianDateTime } from "@/lib/utils/date";
+import { formatDecimal } from "@/lib/utils/format";
+import { describeDueDate, describeHomeworkStatus, formatHomeworkScope, resolveHomeworkStatus } from "@/lib/presentation/homework";
+import { homeworkStatusLabels, homeworkStatusTones } from "@/constants/homework";
+import { ROUTES } from "@/constants/routes";
 import { selectKnownCourseTitles } from "@/store/courseTitles";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchHomework, fetchHomeworkSubmission } from "@/store/homeworkSlice";
-import type { StatusTone } from "@/types";
+import type { StatusTone } from "@/types/ui";
 import HomeworkAttachments from "./HomeworkAttachments";
 import HomeworkSubmissionPanel from "./HomeworkSubmissionPanel";
-
-const errorMessages: Partial<Record<ApiErrorKind, string>> = {
-  "not-found": "تکلیف موردنظر پیدا نشد یا دیگر در دسترس نیست.",
-  authorization: "شما اجازه مشاهده این تکلیف را ندارید.",
-};
+import { homeworkErrorMessages } from "@/constants/homework";
+import { studentCoursePath } from "@/lib/utils/routes";
 
 const noticeClasses: Record<StatusTone, string> = {
   success: "feedback-success",
@@ -81,7 +71,7 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
     if (entry?.status !== "failed") return <DetailSkeleton />;
 
     const knownMessage = entry.errorKind
-      ? errorMessages[entry.errorKind]
+      ? homeworkErrorMessages[entry.errorKind]
       : undefined;
     return (
       <PageMessage
@@ -123,7 +113,7 @@ export default function HomeworkDetailPage({ id }: { id: number }) {
         </h1>
         <p className="page-hero-muted mt-3 text-sm" dir="auto">
           <Link
-            href={`/student/all-courses/${homework.course}`}
+            href={studentCoursePath(homework.course)}
             className="font-bold underline-offset-4 hover:underline"
           >
             {courseTitle}

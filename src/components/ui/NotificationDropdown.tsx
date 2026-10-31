@@ -1,32 +1,16 @@
 'use client'
 
-import { HiBell, HiChevronDown } from 'react-icons/hi'
-import { BsDot } from 'react-icons/bs'
+import { HiBell, HiChevronDown } from 'react-icons/hi';
+import { BsDot } from 'react-icons/bs';
 import HeaderMenu, {
-      headerMenuItemClassName,
-      headerMenuPanelClassName,
-      headerMenuTitleClassName,
-} from './HeaderMenu'
-
-const notifications = [
-      {
-            id: 1,
-            title: 'پروفایل شما کامل شد',
-            description: 'اطلاعات کاربری با موفقیت ثبت شد',
-            time: '۵ دقیقه پیش',
-            unread: true,
-      },
-      {
-            id: 2,
-            title: 'کلاس جدید اضافه شد',
-            description: 'درس React پیشرفته فعال شد',
-            time: '۲ ساعت پیش',
-            unread: false,
-      },
-]
+  headerMenuItemClassName,
+  headerMenuPanelClassName,
+  headerMenuTitleClassName,
+} from './HeaderMenu';
+import { DEMO_NOTIFICATIONS } from "@/constants/notifications";
 
 const NotificationDropdown = () => {
-      const unreadCount = notifications.filter(n => n.unread).length
+      const unreadCount = DEMO_NOTIFICATIONS.filter(n => n.unread).length
 
       return (
             <HeaderMenu
@@ -60,7 +44,7 @@ const NotificationDropdown = () => {
                         </div>
 
                         <ul role="none">
-                              {notifications.length === 0 && (
+                              {DEMO_NOTIFICATIONS.length === 0 && (
                                     <li role="none">
                                           <span role="menuitem" aria-disabled="true" className={`${headerMenuItemClassName} flex items-center justify-start text-gray-700`}>
                                                 نوتیفیکیشنی وجود ندارد
@@ -68,7 +52,7 @@ const NotificationDropdown = () => {
                                     </li>
                               )}
 
-                              {notifications.map((item) => (
+                              {DEMO_NOTIFICATIONS.map((item) => (
                                     <li key={item.id} role="none">
                                           <button
                                                 role="menuitem"

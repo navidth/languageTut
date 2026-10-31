@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import LandingAuthCheck, { INITIAL_ROLE_REDIRECT_KEY } from "./LandingAuthCheck";
+import LandingAuthCheck from "@/components/landing/LandingAuthCheck";
+import { INITIAL_ROLE_REDIRECT_KEY } from "@/constants/storage";
 
 const mocks = vi.hoisted(() => ({
   authState: {

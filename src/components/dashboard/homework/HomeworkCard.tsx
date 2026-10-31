@@ -1,29 +1,13 @@
 import { memo } from "react";
 import Link from "next/link";
 import StatusBadge, { toneTextClasses } from "@/components/ui/StatusBadge";
-import { formatPersianDate, formatPersianDateTime } from "@/lib/date";
-import { formatDecimal } from "@/lib/format";
-import type { Homework } from "@/lib/homeworkApi";
-import {
-  describeDueDate,
-  formatHomeworkScope,
-  homeworkStatusLabels,
-  homeworkStatusTones,
-  resolveHomeworkStatus,
-  type HomeworkDisplayStatus,
-} from "@/lib/homeworkPresentation";
-import { studentHomeworkDetailPath } from "@/lib/routes";
-
-const actionLabels: Record<HomeworkDisplayStatus, string> = {
-  "not-started": "مشاهده جزئیات",
-  open: "مشاهده و ارسال پاسخ",
-  "late-open": "مشاهده و ارسال پاسخ",
-  closed: "مشاهده جزئیات",
-  submitted: "مشاهده ارسال",
-  "submitted-late": "مشاهده ارسال",
-  graded: "مشاهده نمره و بازخورد",
-  unpublished: "مشاهده جزئیات",
-};
+import { formatPersianDate, formatPersianDateTime } from "@/lib/utils/date";
+import { formatDecimal } from "@/lib/utils/format";
+import type { Homework } from "@/types/homework";
+import { describeDueDate, formatHomeworkScope, resolveHomeworkStatus } from "@/lib/presentation/homework";
+import { homeworkStatusLabels, homeworkStatusTones } from "@/constants/homework";
+import { studentHomeworkDetailPath } from "@/lib/utils/routes";
+import { homeworkActionLabels } from "@/constants/homework";
 
 type HomeworkCardProps = {
   homework: Homework;
@@ -110,7 +94,7 @@ function HomeworkCard({ homework, referenceTime, courseTitle }: HomeworkCardProp
         href={studentHomeworkDetailPath(homework.id)}
         className="brand-button mt-5 rounded-xl px-4 py-2.5 text-center text-sm"
       >
-        {actionLabels[status]}
+        {homeworkActionLabels[status]}
       </Link>
     </article>
   );

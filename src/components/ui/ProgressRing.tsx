@@ -1,6 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-
-type RingTone = "accent" | "success" | "warning" | "danger";
+import type { RingTone } from "@/types/ui";
 
 export type ProgressRingProps = {
   /** 0 to 100; `null` draws an empty ring. */

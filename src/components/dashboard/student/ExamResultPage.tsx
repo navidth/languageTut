@@ -4,41 +4,26 @@ import { memo, useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { HiRefresh } from "react-icons/hi";
 import LoginPrompt from "@/components/auth/LoginPrompt";
-import {
-  hasActiveSession,
-  useSessionState,
-} from "@/components/auth/useSessionState";
+import { hasActiveSession, useSessionState } from "@/hooks/useSessionState";
 import PageMessage from "@/components/ui/PageMessage";
 import ProgressRing from "@/components/ui/ProgressRing";
 import { Skeleton } from "@/components/ui/Skeleton";
 import StatusBadge, { toneTextClasses } from "@/components/ui/StatusBadge";
-import { formatPersianDateTime } from "@/lib/date";
-import {
-  answerOutcomeLabels,
-  answerOutcomeTones,
-  collectTestQuestions,
-  completedSubmissionsForTest,
-  formatAttemptDuration,
-  formatExamType,
-  formatQuestionType,
-  formatRecommendedLevel,
-  resolveAnswerOutcome,
-  summarizeExamResult,
-} from "@/lib/examPresentation";
-import { formatDecimal } from "@/lib/format";
-import { ROUTES, studentTestPath } from "@/lib/routes";
-import { formatSkillName } from "@/lib/skillPresentation";
-import type { Question, StudentAnswer } from "@/lib/studentApi";
+import { formatPersianDateTime } from "@/lib/utils/date";
+import { answerOutcomeLabels, answerOutcomeTones } from "@/constants/exam";
+import { collectTestQuestions, completedSubmissionsForTest, formatAttemptDuration, formatExamType, formatQuestionType, formatRecommendedLevel, resolveAnswerOutcome, summarizeExamResult } from "@/lib/presentation/exam";
+import { formatDecimal } from "@/lib/utils/format";
+import { ROUTES } from "@/constants/routes";
+import { studentTestPath } from "@/lib/utils/routes";
+import { formatSkillName } from "@/lib/presentation/skill";
+import type { Question, StudentAnswer } from "@/types/exam";
 import { selectKnownCourseTitles } from "@/store/courseTitles";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchExamSubmissions,
-  fetchPracticeTestDetail,
-  fetchStudentOverview,
-} from "@/store/studentSlice";
-import type { StatusTone } from "@/types";
-
-const BACK_LABEL = "بازگشت به آزمون‌ها";
+import { fetchExamSubmissions, fetchPracticeTestDetail, fetchStudentOverview } from "@/store/studentSlice";
+import type { StatusTone } from "@/types/ui";
+import { EXAM_RESULT_BACK_LABEL, trueFalseLabels } from "@/constants/exam";
+import { studentCoursePath } from "@/lib/utils/routes";
+import { FIELD_CLASS_NAME } from "@/constants/ui";
 
 export default function ExamResultPage({ id }: { id: number }) {
   const dispatch = useAppDispatch();
@@ -116,7 +101,7 @@ export default function ExamResultPage({ id }: { id: number }) {
       <PageMessage
         text="شناسه آزمون معتبر نیست."
         backHref={ROUTES.studentTests}
-        backLabel={BACK_LABEL}
+        backLabel={EXAM_RESULT_BACK_LABEL}
       />
     );
   }
@@ -149,7 +134,7 @@ export default function ExamResultPage({ id }: { id: number }) {
         }
         retry={forbidden ? undefined : reload}
         backHref={ROUTES.studentTests}
-        backLabel={BACK_LABEL}
+        backLabel={EXAM_RESULT_BACK_LABEL}
       />
     );
   }
@@ -165,7 +150,7 @@ export default function ExamResultPage({ id }: { id: number }) {
         <PageMessage
           text="آزمون موردنظر پیدا نشد یا دیگر در دسترس نیست."
           backHref={ROUTES.studentTests}
-          backLabel={BACK_LABEL}
+          backLabel={EXAM_RESULT_BACK_LABEL}
         />
       );
     }
@@ -174,7 +159,7 @@ export default function ExamResultPage({ id }: { id: number }) {
         <PageMessage
           text="شما به این آزمون دسترسی ندارید."
           backHref={ROUTES.studentTests}
-          backLabel={BACK_LABEL}
+          backLabel={EXAM_RESULT_BACK_LABEL}
         />
       );
     }
@@ -188,7 +173,7 @@ export default function ExamResultPage({ id }: { id: number }) {
             : "شما هنوز در این آزمون شرکت نکرده‌اید و نتیجه‌ای برای نمایش وجود ندارد."
         }
         backHref={ROUTES.studentTests}
-        backLabel={BACK_LABEL}
+        backLabel={EXAM_RESULT_BACK_LABEL}
       >
         <Link
           href={studentTestPath(id)}
@@ -215,7 +200,7 @@ export default function ExamResultPage({ id }: { id: number }) {
   return (
     <article className="mx-auto max-w-4xl">
       <Link href={ROUTES.studentTests} className="brand-link text-sm">
-        → {BACK_LABEL}
+        → {EXAM_RESULT_BACK_LABEL}
       </Link>
 
       <header className="page-hero my-5 rounded-3xl p-7">
@@ -235,7 +220,7 @@ export default function ExamResultPage({ id }: { id: number }) {
           <p className="page-hero-muted mt-3 text-sm" dir="auto">
             {test && courseTitle && (
               <Link
-                href={`/student/all-courses/${test.course}`}
+                href={studentCoursePath(test.course)}
                 className="font-bold underline-offset-4 hover:underline"
               >
                 {courseTitle}
@@ -261,7 +246,7 @@ export default function ExamResultPage({ id }: { id: number }) {
             onChange={(event) =>
               setSelectedAttemptId(Number(event.target.value))
             }
-            className="block w-full rounded-xl border border-input bg-card p-3 text-sm sm:w-auto"
+            className={`${FIELD_CLASS_NAME} block text-sm sm:w-auto`}
           >
             {attempts.map((attempt, index) => (
               <option key={attempt.id} value={attempt.id}>
@@ -381,16 +366,11 @@ export default function ExamResultPage({ id }: { id: number }) {
         href={ROUTES.studentTests}
         className="brand-button mt-8 inline-block rounded-xl px-6 py-3 text-sm"
       >
-        {BACK_LABEL}
+        {EXAM_RESULT_BACK_LABEL}
       </Link>
     </article>
   );
 }
-
-const trueFalseLabels: Record<string, string> = {
-  true: "صحیح",
-  false: "غلط",
-};
 
 function formatAnswerText(text: string, questionType: string | undefined) {
   return questionType === "true_false"

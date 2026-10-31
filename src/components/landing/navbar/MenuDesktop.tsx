@@ -1,6 +1,7 @@
-import { menuItems } from "@/lib/constants";
+import { menuItems } from "@/constants/navigation";
 import Link from "next/link";
-import { activeMenuItemClass, idleMenuItemClass, isMenuLinkActive } from "./menuState";
+import { activeMenuItemClass, idleMenuItemClass } from "@/constants/ui";
+import { isMenuLinkActive } from "@/lib/utils/navigation";
 
 const MenuDesktop = ({ pathName }: { pathName: string }) => {
       return (

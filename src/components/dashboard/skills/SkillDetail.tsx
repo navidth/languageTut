@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { fetchSkill } from "@/store/skillsSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { skillDescriptions, skillLabels } from "@/lib/skillPresentation";
+import { skillDescriptions, skillLabels } from "@/constants/skills";
 
 export default function SkillDetail({ id }: { id: number }) {
   const dispatch = useAppDispatch();

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import LandingAccountAction from "./LandingAccountAction";
+import LandingAccountAction from "@/components/landing/navbar/LandingAccountAction";
 
 type MockAuthState = {
   status: "idle" | "authenticated";

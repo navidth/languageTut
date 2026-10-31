@@ -1,20 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/lib/apiErrors";
+import { ApiError } from "@/lib/services/apiErrors";
 import {
   buildHomework,
   buildHomeworkSubmission,
   buildPage,
 } from "@/test/fixtures";
-import { logout } from "./authSlice";
-import homeworkReducer, {
-  fetchHomework,
-  fetchHomeworkList,
-  fetchHomeworkSubmission,
-  homeworkListKey,
-  homeworkSubmissionRemoved,
-  homeworkSubmissionSaved,
-} from "./homeworkSlice";
+import { logout } from "@/store/authSlice";
+import homeworkReducer, { fetchHomework, fetchHomeworkList, fetchHomeworkSubmission, homeworkListKey, homeworkSubmissionRemoved, homeworkSubmissionSaved } from "@/store/homeworkSlice";
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
@@ -22,8 +15,8 @@ const mocks = vi.hoisted(() => ({
   getSubmission: vi.fn(),
 }));
 
-vi.mock("@/lib/homeworkApi", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/homeworkApi")>()),
+vi.mock("@/lib/services/homeworkApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/services/homeworkApi")>()),
   homeworkApi: mocks,
 }));
 

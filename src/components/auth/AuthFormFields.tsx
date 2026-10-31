@@ -4,8 +4,20 @@ import { HiEye, HiEyeOff } from "react-icons/hi";
 // Form pieces shared by the sign-in dialog and the password reset page.
 
 // The ring and border mark focus, so the global focus outline steps aside.
+// A field with an error gets a red border; `!` is needed because the global
+// `* { border-color }` rule in globals.css beats border colour utilities.
+// Text is right-aligned like the labels, also in left-to-right fields.
 export const authInputClassName =
-  "w-full rounded-2xl border border-border bg-secondary-soft/35 py-3.5 text-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.55)] placeholder:text-muted-foreground/75 hover:border-brand-secondary/45 focus:border-brand-accent focus:bg-card focus:ring-4 focus:ring-accent-soft focus-visible:outline-none dark:shadow-none";
+  "w-full rounded-2xl border border-border bg-secondary-soft/35 py-3.5 text-right text-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.55)] placeholder:text-muted-foreground/75 hover:border-brand-secondary/45 focus:border-brand-accent focus:bg-card focus:ring-4 focus:ring-accent-soft focus-visible:outline-none aria-invalid:border-destructive! aria-invalid:focus:ring-destructive/15 dark:shadow-none";
+
+/**
+ * Side padding for a field with an icon: the icon sits on the right, and a
+ * password's show/hide button on the left. Physical sides, because `ps`/`pe`
+ * would follow the direction of a left-to-right field (email, phone,
+ * password) rather than the form's.
+ */
+export const authFieldPaddingClassName = "pl-4 pr-11";
+export const authPasswordPaddingClassName = "pl-12 pr-11";
 
 export const authLinkButtonClassName = "brand-link text-sm font-bold";
 

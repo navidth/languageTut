@@ -1,29 +1,10 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import {
-  authApi,
-  type AuthFeatures,
-  type LoginRequest,
-  type PhoneLoginRequest,
-  type PatchedUserRequest,
-  type RegisterRequest,
-  type User,
-  type UserRequest,
-} from "@/lib/auth";
-import { clearAuthStorage, getStoredRefreshToken, storeTokens } from "@/lib/apiClient";
-import { getApiErrorMessage, normalizeApiError, type ApiFieldErrors } from "@/lib/apiErrors";
-import { isCacheFresh } from "@/lib/cache";
-
-type AuthState = {
-  user: User | null;
-  status: "idle" | "loading" | "authenticated" | "error";
-  error: string | null;
-  profileUpdateStatus: "idle" | "loading" | "succeeded" | "failed";
-  profileUpdateError: string | null;
-  /** Account features from `/api/auth/features/`; `null` until loaded. */
-  features: AuthFeatures | null;
-  featuresStatus: "idle" | "loading" | "succeeded" | "failed";
-  featuresLastFetched: number | null;
-};
+import { authApi } from "@/lib/services/authApi";
+import { type AuthFeatures, type LoginRequest, type PhoneLoginRequest, type RegisterRequest, type User } from "@/types/auth";
+import { clearAuthStorage, getStoredRefreshToken, storeTokens } from "@/lib/services/apiClient";
+import { getApiErrorMessage, normalizeApiError } from "@/lib/services/apiErrors";
+import { isCacheFresh } from "@/lib/utils/cache";
+import type { AuthState, ProfileUpdate, ProfileUpdateError } from "@/types/store";
 
 const initialState: AuthState = {
   user: null,
@@ -113,14 +94,6 @@ export const loadMe = createAsyncThunk("auth/me", async (_, api) => {
     return state.auth.status !== "loading";
   },
 });
-
-/** PATCH sends only changed fields; PUT replaces all editable fields at once. */
-export type ProfileUpdate =
-  | { method: "patch"; data: PatchedUserRequest }
-  | { method: "put"; data: UserRequest };
-
-/** Field errors are keyed by API field name, e.g. `current_password`. */
-export type ProfileUpdateError = { message: string; fieldErrors: ApiFieldErrors };
 
 export const updateProfile = createAsyncThunk<
   User,

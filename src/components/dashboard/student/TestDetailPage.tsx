@@ -2,69 +2,29 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { getApiErrorMessage, normalizeApiError } from "@/lib/apiErrors";
-import type { Course } from "@/lib/courses";
-import { formatRecommendedLevel } from "@/lib/examPresentation";
-import { studentExamResultPath } from "@/lib/routes";
+import { getApiErrorMessage, normalizeApiError } from "@/lib/services/apiErrors";
+import { formatRecommendedLevel } from "@/lib/presentation/exam";
+import { studentExamResultPath } from "@/lib/utils/routes";
+import { type ActiveSubmission, type PracticeTestAttempt } from "@/types/exam";
+import { fetchCourseDetail, selectCourseDetail } from "@/store/coursesSlice";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  studentApi,
-  type ActiveSubmission,
-  type PracticeTest,
-  type PracticeTestAttempt,
-} from "@/lib/studentApi";
-import { useAppDispatch } from "@/store/hooks";
-import { invalidateExamSubmissions } from "@/store/studentSlice";
-import Countdown, { useCountdown } from "@/components/ui/Countdown";
+  fetchPracticeTestDetail,
+  invalidateExamSubmissions,
+  startPracticeTest,
+  submitPracticeTest,
+} from "@/store/studentSlice";
+import AsyncState from "@/components/ui/AsyncState";
+import Countdown from "@/components/ui/Countdown";
+import { useCountdown } from "@/hooks/useCountdown";
 import PracticeTestMedia, { mediaAvailableBeforeStart } from "./PracticeTestMedia";
 import TestQuestionCard from "./TestQuestionCard";
-
-export { formatRemainingTime } from "@/lib/format";
-
-/** The server rejects late submits, so answers are sent a little early. */
-export const AUTO_SUBMIT_LEAD_MS = 5_000;
-
-const EXPIRED_MESSAGE =
-  "زمان این تلاش به پایان رسیده بود و پاسخ‌ها ثبت نشد.";
-
-type LoadError = { message: string; forbidden: boolean };
-
-function answersStorageKey(attemptId: number) {
-  return `practice-test-answers:${attemptId}`;
-}
-
-// Answers survive a reload while the attempt is still running.
-function readStoredAnswers(attemptId: number): Record<number, string> {
-  try {
-    const value = JSON.parse(
-      window.localStorage.getItem(answersStorageKey(attemptId)) ?? "{}",
-    ) as unknown;
-    return value && typeof value === "object"
-      ? (value as Record<number, string>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeStoredAnswers(attemptId: number, answers: Record<number, string> | null) {
-  try {
-    if (answers) {
-      window.localStorage.setItem(answersStorageKey(attemptId), JSON.stringify(answers));
-    } else {
-      window.localStorage.removeItem(answersStorageKey(attemptId));
-    }
-  } catch {
-    // Storage can be unavailable; answers then live in memory only.
-  }
-}
-
-function attemptFromStart(
-  result: PracticeTestAttempt,
-): ActiveSubmission | null {
-  const id = result.id ?? result.submission_id;
-  if (id == null || !result.started_at) return null;
-  return { id, started_at: result.started_at, deadline: result.deadline ?? null };
-}
+import type { TestLoadError } from "@/types/exam";
+import { AUTO_SUBMIT_LEAD_MS, EXAM_EXPIRED_MESSAGE } from "@/constants/exam";
+import { studentCoursePath } from "@/lib/utils/routes";
+import { ROUTES } from "@/constants/routes";
+import { readStoredAnswers, writeStoredAnswers } from "@/lib/utils/practiceTestAnswers";
+import { attemptFromStart } from "@/lib/presentation/exam";
 
 export default function TestDetailPage({
   id,
@@ -75,9 +35,13 @@ export default function TestDetailPage({
   courseId?: number;
 }) {
   const dispatch = useAppDispatch();
-  const [test, setTest] = useState<PracticeTest | null>(null);
-  const [loadError, setLoadError] = useState<LoadError | null>(null);
-  const [course, setCourse] = useState<Course | null>(null);
+  const test = useAppSelector((state) => state.student.testDetails[id]?.data ?? null);
+  const course = useAppSelector((state) =>
+    courseId ? selectCourseDetail(state, courseId)?.data ?? null : null,
+  );
+  // Set once this visit's own read of the test has answered.
+  const [visit, setVisit] = useState<{ id: number; error: TestLoadError | null } | null>(null);
+  const latestIdRef = useRef(id);
   const [attempt, setAttempt] = useState<ActiveSubmission | null>(null);
   const [attemptEnded, setAttemptEnded] = useState(false);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -90,6 +54,8 @@ export default function TestDetailPage({
   );
   const [timedOut, setTimedOut] = useState(false);
   const autoSubmittedRef = useRef<number | null>(null);
+  const loaded = visit?.id === id;
+  const loadError = loaded ? visit.error : null;
 
   const beginAttempt = useCallback((running: ActiveSubmission | null) => {
     setAttempt(running);
@@ -97,10 +63,7 @@ export default function TestDetailPage({
   }, []);
 
   useEffect(() => {
-    let active = true;
-    setTest(null);
-    setLoadError(null);
-    setCourse(null);
+    latestIdRef.current = id;
     setAttempt(null);
     setAttemptEnded(false);
     setAnswers({});
@@ -111,36 +74,26 @@ export default function TestDetailPage({
     autoSubmittedRef.current = null;
 
     // Only reads here: an attempt starts when the student asks for it, and a
-    // running one comes back as `active_submission`.
-    void studentApi
-      .test(id)
-      .then((result) => {
-        if (!active) return;
-        setTest(result);
-        beginAttempt(result.active_submission ?? null);
-      })
-      .catch((error) => {
-        if (!active) return;
-        const apiError = normalizeApiError(
-          error,
-          "دریافت آزمون ناموفق بود یا به آن دسترسی ندارید.",
-        );
-        const forbidden = apiError.status === 403;
-        setLoadError({ message: apiError.message, forbidden });
-        if (forbidden && courseId) {
-          void studentApi
-            .course(courseId)
-            .then((result) => {
-              if (active) setCourse(result);
-            })
-            .catch(() => undefined);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [beginAttempt, courseId, id]);
+    // running one comes back as `active_submission`, so the read is always
+    // fresh. The id check, not a cleanup flag, drops a stale answer: under
+    // Strict Mode the second read is skipped while the first one runs.
+    void dispatch(fetchPracticeTestDetail({ id, force: true })).then((action) => {
+      if (latestIdRef.current !== id) return;
+      if (fetchPracticeTestDetail.fulfilled.match(action)) {
+        beginAttempt(action.payload.active_submission ?? null);
+        setVisit({ id, error: null });
+        return;
+      }
+      if (action.meta.condition) return;
+      const error = normalizeApiError(
+        action.payload,
+        "دریافت آزمون ناموفق بود یا به آن دسترسی ندارید.",
+      );
+      const forbidden = error.status === 403;
+      setVisit({ id, error: { message: error.message, forbidden } });
+      if (forbidden && courseId) void dispatch(fetchCourseDetail({ id: courseId }));
+    });
+  }, [beginAttempt, courseId, dispatch, id]);
 
   const startTest = useCallback(async () => {
     if (starting) return;
@@ -148,9 +101,7 @@ export default function TestDetailPage({
     setStartError("");
     try {
       // Safe to repeat: a running attempt is returned instead of a new one.
-      const started = await studentApi.startTest(id);
-      const detail = await studentApi.test(id);
-      setTest(detail);
+      const { started, detail } = await dispatch(startPracticeTest(id)).unwrap();
       setAttemptEnded(false);
       setSubmitError("");
       setTimedOut(false);
@@ -162,7 +113,7 @@ export default function TestDetailPage({
     } finally {
       setStarting(false);
     }
-  }, [beginAttempt, id, starting]);
+  }, [beginAttempt, dispatch, id, starting]);
 
   const questions = useMemo(() => test?.questions ?? [], [test]);
   const answeredCount = useMemo(
@@ -212,21 +163,22 @@ export default function TestDetailPage({
       setSubmitting(true);
       setSubmitError("");
       try {
-        const result = await studentApi.submitTest(id, {
-          answers: questions.map((question) => ({
-            question: question.id,
-            answer_text: (answers[question.id] ?? "").trim(),
-          })),
-        });
+        const result = await dispatch(submitPracticeTest({
+          id,
+          data: {
+            answers: questions.map((question) => ({
+              question: question.id,
+              answer_text: (answers[question.id] ?? "").trim(),
+            })),
+          },
+        })).unwrap();
         writeStoredAnswers(attempt.id, null);
         if (result.grading_status === "expired") {
           setAttemptEnded(true);
-          setSubmitError(EXPIRED_MESSAGE);
+          setSubmitError(EXAM_EXPIRED_MESSAGE);
         } else {
           setSubmission(result);
         }
-        // The cached exam history does not include this attempt yet.
-        dispatch(invalidateExamSubmissions());
       } catch (error) {
         const apiError = normalizeApiError(
           error,
@@ -237,8 +189,9 @@ export default function TestDetailPage({
           return;
         }
         // A 400 means a late submit or no running attempt; ask which.
-        const detail = await studentApi.test(id).catch(() => null);
-        if (detail) setTest(detail);
+        const detail = await dispatch(fetchPracticeTestDetail({ id, force: true }))
+          .unwrap()
+          .catch(() => null);
         if (detail?.active_submission) {
           setSubmitError(apiError.message);
           return;
@@ -248,7 +201,7 @@ export default function TestDetailPage({
         setAttemptEnded(true);
         setSubmitError(
           timedOut || deadline <= Date.now()
-            ? EXPIRED_MESSAGE
+            ? EXAM_EXPIRED_MESSAGE
             : "این تلاش دیگر فعال نیست. برای ادامه، آزمون را دوباره شروع کنید.",
         );
         dispatch(invalidateExamSubmissions());
@@ -295,7 +248,7 @@ export default function TestDetailPage({
           <p>{loadError.message}</p>
           {buyCourse && (
             <Link
-              href={`/student/all-courses/${course.id}`}
+              href={studentCoursePath(course.id)}
               className="brand-button mt-4 inline-block rounded-xl px-5 py-2.5 text-sm"
             >
               خرید دوره «{course.title}»
@@ -303,7 +256,7 @@ export default function TestDetailPage({
           )}
           {loadError.forbidden && !course && (
             <Link
-              href="/student/all-courses"
+              href={ROUTES.studentCourses}
               className="ghost-button mt-4 inline-block rounded-xl px-5 py-2.5 text-sm"
             >
               مشاهده دوره‌ها
@@ -313,8 +266,8 @@ export default function TestDetailPage({
       </section>
     );
   }
-  if (!test)
-    return <div className="p-10 text-center">در حال دریافت آزمون...</div>;
+  if (!loaded || !test)
+    return <AsyncState message="در حال دریافت آزمون..." />;
 
   const inputsDisabled = !running || starting || timedOut || submitting;
   const recommendedLevel = formatRecommendedLevel(

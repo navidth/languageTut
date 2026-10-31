@@ -2,7 +2,7 @@
 
 import { useRef, useState, type DragEvent } from "react";
 import { HiDocument, HiUpload } from "react-icons/hi";
-import { formatFileSize } from "@/lib/files";
+import { formatFileSize } from "@/lib/utils/files";
 
 export type FileDropzoneProps = {
   /** Id of the file input; label it with `aria-labelledby` or a `<label htmlFor>`. */

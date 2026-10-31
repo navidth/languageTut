@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/lib/apiErrors";
+import { ApiError } from "@/lib/services/apiErrors";
 import {
   buildHomework,
   buildHomeworkSubmission,
@@ -9,7 +9,7 @@ import {
   buildSubmissionSummary,
 } from "@/test/fixtures";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
-import HomeworkDetailPage from "./HomeworkDetailPage";
+import HomeworkDetailPage from "@/components/dashboard/homework/HomeworkDetailPage";
 
 const homeworkMocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -26,13 +26,13 @@ const studentMocks = vi.hoisted(() => ({
 const fileMocks = vi.hoisted(() => ({ saveBlob: vi.fn() }));
 const authFlow = vi.hoisted(() => ({ startAuthFlow: vi.fn() }));
 
-vi.mock("@/lib/homeworkApi", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/homeworkApi")>()),
+vi.mock("@/lib/services/homeworkApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/services/homeworkApi")>()),
   homeworkApi: homeworkMocks,
 }));
-vi.mock("@/lib/studentApi", () => ({ studentApi: studentMocks }));
-vi.mock("@/lib/files", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/files")>()),
+vi.mock("@/lib/services/studentApi", () => ({ studentApi: studentMocks }));
+vi.mock("@/lib/utils/files", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/utils/files")>()),
   saveBlob: fileMocks.saveBlob,
 }));
 vi.mock("@/components/auth/AuthFlowProvider", () => ({

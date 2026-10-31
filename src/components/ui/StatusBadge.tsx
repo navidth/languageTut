@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { StatusTone } from "@/types";
+import type { StatusTone } from "@/types/ui";
 
 const toneClasses: Record<StatusTone, string> = {
   neutral: "bg-muted text-muted-foreground",

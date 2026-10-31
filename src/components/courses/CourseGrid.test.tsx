@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import CourseGrid from "./CourseGrid";
 import { normalizeMediaAssets } from "@/components/media/MediaGallery";
-import type { Course } from "@/lib/courses";
+import type { Course } from "@/types/course";
 
 const course: Course = {
   id: 16,

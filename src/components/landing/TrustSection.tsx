@@ -1,41 +1,5 @@
-import {
-  HiOutlineBookOpen,
-  HiOutlineMicrophone,
-  HiOutlinePencilAlt,
-  HiOutlineVolumeUp,
-} from "react-icons/hi";
 import Reveal from "@/components/ui/Reveal";
-
-const skills = [
-  {
-    icon: HiOutlineVolumeUp,
-    english: "Listening",
-    persian: "مهارت شنیداری",
-    text: "درک بهتر گفت‌وگوها، گویش‌ها و استفاده از واژگان کاربردی",
-    accent: "bg-brand-accent text-brand-primary",
-  },
-  {
-    icon: HiOutlineMicrophone,
-    english: "Speaking",
-    persian: "مهارت گفتاری",
-    text: "ساخت جملات متناسب با سطر و افزایش استفاده از مکالمات روزمره",
-    accent: "bg-white text-brand-secondary",
-  },
-  {
-    icon: HiOutlineBookOpen,
-    english: "Reading",
-    persian: "مهارت خواندن",
-    text: " درک مطلب، درک واژگان و افزایش مهارت پاسخ به سوالات",
-    accent: "bg-white text-brand-secondary",
-  },
-  {
-    icon: HiOutlinePencilAlt,
-    english: "Writing",
-    persian: "مهارت نوشتاری",
-    text: "استفاده از واژگان و دستور زبان پرکاربرد در آزمون",
-    accent: "bg-brand-accent text-brand-primary",
-  },
-] as const;
+import { trustSkills } from "@/constants/landing";
 
 export default function TrustSection() {
   return (
@@ -73,7 +37,7 @@ export default function TrustSection() {
         </Reveal>
 
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {skills.map(
+          {trustSkills.map(
             ({ icon: Icon, english, persian, text, accent }, index) => (
               <Reveal
                 as="article"

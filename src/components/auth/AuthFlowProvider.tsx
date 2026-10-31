@@ -12,32 +12,19 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { hasStoredSession as hasSavedSession } from "@/lib/apiClient";
-import type { User } from "@/lib/auth";
-import {
-  type AuthDialogView,
-  type AuthIntent,
-  type AuthenticationMode,
-  resolvePostAuthenticationFlow,
-} from "@/lib/authFlow";
-import { PLACEMENT_SECTION_ID, ROUTES } from "@/lib/routes";
+import { hasStoredSession as hasSavedSession } from "@/lib/services/apiClient";
+import type { User } from "@/types/auth";
+import { type AuthDialogView, type AuthIntent, type AuthenticationMode } from "@/types/auth";
+import { resolvePostAuthenticationFlow } from "@/lib/utils/authFlow";
+import { PLACEMENT_SECTION_ID, ROUTES } from "@/constants/routes";
 import { fetchAuthFeatures, loadMe } from "@/store/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import type { AuthFlowContextValue, AuthFlowOptions } from "@/types/auth";
 
-const loadAuthenticationModal = () => import("./AuthenticationModal");
+const loadAuthenticationModal = () => import("@/components/auth/AuthenticationModal");
 // The modal is only downloaded once it is needed, so pages for signed-in
 // users do not carry it.
 const AuthenticationModal = lazy(loadAuthenticationModal);
-
-type AuthFlowOptions = {
-  /** Opens the dialog on this screen when it has to ask for sign-in. */
-  view?: AuthDialogView;
-};
-
-type AuthFlowContextValue = {
-  startAuthFlow: (intent?: AuthIntent, options?: AuthFlowOptions) => Promise<void>;
-  busy: boolean;
-};
 
 const AuthFlowContext = createContext<AuthFlowContextValue | null>(null);
 

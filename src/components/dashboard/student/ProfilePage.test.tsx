@@ -2,11 +2,11 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { User } from "@/lib/auth";
+import type { User } from "@/types/auth";
 import { fetchAuthFeatures } from "@/store/authSlice";
 import { makeStore } from "@/store";
 import { renderWithStore, testStudent } from "@/test/renderWithStore";
-import ProfilePage from "./ProfilePage";
+import ProfilePage from "@/components/dashboard/student/ProfilePage";
 
 const mocks = vi.hoisted(() => ({
   features: vi.fn(),
@@ -17,8 +17,8 @@ const mocks = vi.hoisted(() => ({
   replaceMe: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/auth")>();
+vi.mock("@/lib/services/authApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/authApi")>();
   return { ...actual, authApi: { ...actual.authApi, ...mocks } };
 });
 

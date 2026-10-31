@@ -2,42 +2,30 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getApiErrorMessage } from "@/lib/apiErrors";
-import { studentApi, type Lesson, type PracticeTest, type Question } from "@/lib/studentApi";
-import type { Course, Level } from "@/lib/courses";
-import { formatCourseType } from "@/lib/coursePresentation";
-import { studentExamResultPath, studentTestPath } from "@/lib/routes";
-import { formatSkillName } from "@/lib/skillPresentation";
-import { hasActiveSession, useSessionState } from "@/components/auth/useSessionState";
+import { getApiErrorMessage } from "@/lib/services/apiErrors";
+import { type Lesson } from "@/types/course";
+import { type PracticeTest, type Question } from "@/types/exam";
+import type { Course } from "@/types/course";
+import type { Level } from "@/types/level";
+import { formatCourseType } from "@/lib/presentation/course";
+import { studentExamResultPath, studentTestPath } from "@/lib/utils/routes";
+import { formatSkillName } from "@/lib/presentation/skill";
+import { hasActiveSession, useSessionState } from "@/hooks/useSessionState";
 import AsyncState from "@/components/ui/AsyncState";
 import Pagination from "@/components/ui/Pagination";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  fetchEnrolledCourses,
-  fetchExamSubmissions,
-  fetchStudentResource,
-  invalidateStudentProgress,
-  selectLatestExamSubmissions,
-  type StudentResourceKind,
-} from "@/store/studentSlice";
-
-export type ResourceKind = "levels" | "courses" | "lessons" | "questions" | "tests";
-type Item = Level | Course | Lesson | Question | PracticeTest;
-
-const titles: Record<ResourceKind, [string, string]> = {
-  levels: ["سطح‌های زبان", "مسیر استاندارد یادگیری از A1 تا C2"],
-  courses: ["کورس‌های من", "دوره‌های ثبت‌نام‌شده و میزان پیشرفت شما"],
-  lessons: ["درس‌ها", "محتوای آموزشی و وضعیت مطالعه"],
-  questions: ["سؤال‌ها", "بانک سؤال‌های تمرینی"],
-  tests: ["تمرین‌های تستی", "آزمون‌های زمان‌دار متناسب با سطح و مهارت"],
-};
+import { completeLesson, fetchEnrolledCourses, fetchExamSubmissions, fetchStudentResource, selectLatestExamSubmissions, startLesson } from "@/store/studentSlice";
+import { type StudentResourceKind } from "@/types/student";
+import type { StudentResourcePageKind, StudentResourceItem } from "@/types/student";
+import { studentResourceTitles } from "@/constants/student";
+import { coursePath } from "@/lib/utils/routes";
 export default function StudentResourcePage({
   kind,
   heading,
   description,
   eyebrow = "پنل دانش‌آموز",
 }: {
-  kind: ResourceKind;
+  kind: StudentResourcePageKind;
   heading?: string;
   description?: string;
   eyebrow?: string;
@@ -49,7 +37,7 @@ export default function StudentResourcePage({
   const entry = useAppSelector((state) => kind === "courses"
     ? state.student.enrolledCoursePages[page]
     : state.student.resources[kind][page]);
-  const items = (entry?.data?.results ?? []) as Item[];
+  const items = (entry?.data?.results ?? []) as StudentResourceItem[];
   const loading = !entry || entry.status === "loading";
 
   const load = useCallback((requestedPage: number, force = false) => {
@@ -78,8 +66,7 @@ export default function StudentResourcePage({
     setBusy(id);
     setMutationError("");
     try {
-      await (complete ? studentApi.completeLesson(id) : studentApi.startLesson(id));
-      dispatch(invalidateStudentProgress());
+      await dispatch(complete ? completeLesson(id) : startLesson(id)).unwrap();
       await load(page, true);
     } catch (e) { setMutationError(getApiErrorMessage(e, "انجام عملیات درس ناموفق بود.")); } finally { setBusy(null); }
   }
@@ -88,8 +75,8 @@ export default function StudentResourcePage({
     <section className="mx-auto max-w-6xl">
       <div className="page-hero mb-7 rounded-3xl p-7">
         <p className="page-hero-muted mb-2 text-sm">{eyebrow}</p>
-        <h1 className="text-3xl font-black">{heading ?? titles[kind][0]}</h1>
-        <p className="page-hero-muted mt-2">{description ?? titles[kind][1]}</p>
+        <h1 className="text-3xl font-black">{heading ?? studentResourceTitles[kind][0]}</h1>
+        <p className="page-hero-muted mt-2">{description ?? studentResourceTitles[kind][1]}</p>
       </div>
       {mutationError && <p className="feedback-error mb-4 rounded-xl p-3 text-sm" role="alert">{mutationError}</p>}
       {loading && <AsyncState message="در حال دریافت اطلاعات..." />}
@@ -117,7 +104,7 @@ export default function StudentResourcePage({
             previous={entry.data.previous}
             onPageChange={setPage}
             loading={loading}
-            ariaLabel={`صفحه‌بندی ${heading ?? titles[kind][0]}`}
+            ariaLabel={`صفحه‌بندی ${heading ?? studentResourceTitles[kind][0]}`}
           />
         </>
       )}
@@ -143,7 +130,7 @@ function CourseCard({ item }: { item: Course }) {
       <strong className={item.is_free ? "text-success" : "text-foreground"}>{item.is_free ? "رایگان" : `${item.price.toLocaleString("fa-IR")} تومان`}</strong>
       <span className={item.has_access ? "text-success" : "text-muted-foreground"}>{item.has_access ? "دسترسی فعال" : "نیاز به تهیه"}</span>
     </div>
-    <Link href={`/courses/${item.id}`} className="brand-link mt-5 inline-block text-sm">مشاهده جزئیات ←</Link>
+    <Link href={coursePath(item.id)} className="brand-link mt-5 inline-block text-sm">مشاهده جزئیات ←</Link>
   </>;
 }
 function LessonCard({ item, busy, action }: { item: Lesson; busy: boolean; action: (id: number, complete: boolean) => void }) {

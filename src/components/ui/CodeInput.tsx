@@ -1,7 +1,7 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
-import { toLatinDigits } from "@/lib/auth";
+import { normalizeCode } from "@/lib/utils/normalize";
 
 export type CodeInputProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -16,11 +16,6 @@ export type CodeInputProps = Omit<
   onComplete?: (value: string) => void;
   completeLength?: number;
 };
-
-/** Persian or Arabic digits become Latin; spaces, dashes and other text drop out. */
-export function normalizeCode(raw: string, maxLength = 8) {
-  return toLatinDigits(raw).replace(/\D/g, "").slice(0, maxLength);
-}
 
 /**
  * One field for an emailed or texted code. A row of fixed boxes would break

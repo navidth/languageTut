@@ -1,14 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import studentReducer, {
-  fetchEnrolledCourses,
-  fetchExamSubmissions,
-  fetchPracticeTestDetail,
-  fetchStudentOverview,
-  fetchStudentResource,
-  invalidateExamSubmissions,
-  selectLatestExamSubmissions,
-} from "./studentSlice";
+import studentReducer, { fetchEnrolledCourses, fetchExamSubmissions, fetchPracticeTestDetail, fetchStudentOverview, fetchStudentResource, invalidateExamSubmissions, selectLatestExamSubmissions } from "@/store/studentSlice";
 
 const mocks = vi.hoisted(() => ({
   progress: vi.fn(),
@@ -19,15 +11,18 @@ const mocks = vi.hoisted(() => ({
   test: vi.fn(),
 }));
 
-vi.mock("@/lib/studentApi", () => ({
+vi.mock("@/lib/services/studentApi", () => ({
   studentApi: {
     progress: mocks.progress,
     enrollments: mocks.enrollments,
-    course: mocks.course,
     levels: mocks.levels,
     mySubmissions: mocks.mySubmissions,
     test: mocks.test,
   },
+}));
+
+vi.mock("@/lib/services/coursesApi", () => ({
+  coursesApi: { get: mocks.course },
 }));
 
 function createStore() {

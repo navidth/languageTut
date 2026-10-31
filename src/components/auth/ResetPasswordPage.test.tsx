@@ -2,19 +2,19 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ResetPasswordPage from "./ResetPasswordPage";
+import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
 
 const mocks = vi.hoisted(() => ({
   confirmPasswordReset: vi.fn(),
   startAuthFlow: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/auth")>();
+vi.mock("@/lib/services/authApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/authApi")>();
   return { ...actual, authApi: { confirmPasswordReset: mocks.confirmPasswordReset } };
 });
 
-vi.mock("./AuthFlowProvider", () => ({
+vi.mock("@/components/auth/AuthFlowProvider", () => ({
   useAuthFlow: () => ({ startAuthFlow: mocks.startAuthFlow, busy: false }),
 }));
 

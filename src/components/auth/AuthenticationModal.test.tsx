@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import AuthenticationModal from "./AuthenticationModal";
+import AuthenticationModal from "@/components/auth/AuthenticationModal";
 
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
@@ -10,24 +10,22 @@ const mocks = vi.hoisted(() => ({
   loadMe: vi.fn(() => ({ type: "auth/loadMe" })),
   features: { smsEnabled: false, loading: false },
   requestLoginCode: vi.fn(),
-  requestPasswordReset: vi.fn(),
   requestEmailPasswordReset: vi.fn(),
   confirmEmailPasswordReset: vi.fn(),
   requestSmsPasswordReset: vi.fn(),
   confirmSmsPasswordReset: vi.fn(),
 }));
 
-vi.mock("./useAuthFeatures", () => ({
+vi.mock("@/hooks/useAuthFeatures", () => ({
   useAuthFeatures: () => mocks.features,
 }));
 
-vi.mock("@/lib/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/auth")>();
+vi.mock("@/lib/services/authApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/services/authApi")>();
   return {
     ...actual,
     authApi: {
       requestLoginCode: mocks.requestLoginCode,
-      requestPasswordReset: mocks.requestPasswordReset,
       requestEmailPasswordReset: mocks.requestEmailPasswordReset,
       confirmEmailPasswordReset: mocks.confirmEmailPasswordReset,
       requestSmsPasswordReset: mocks.requestSmsPasswordReset,
@@ -76,7 +74,6 @@ describe("AuthenticationModal", () => {
     }));
     mocks.features = { smsEnabled: false, loading: false };
     mocks.requestLoginCode.mockResolvedValue({ detail: "sent" });
-    mocks.requestPasswordReset.mockResolvedValue({ detail: "sent" });
     mocks.requestEmailPasswordReset.mockResolvedValue({ detail: "sent" });
     mocks.confirmEmailPasswordReset.mockResolvedValue({ detail: "changed" });
     mocks.requestSmsPasswordReset.mockResolvedValue({ detail: "sent" });
@@ -241,7 +238,6 @@ describe("AuthenticationModal", () => {
 
     expect(await screen.findByText(/کد بازیابی به آن فرستاده شد/)).toBeInTheDocument();
     expect(mocks.requestEmailPasswordReset).toHaveBeenCalledWith("learner@example.com");
-    expect(mocks.requestPasswordReset).not.toHaveBeenCalled();
     expect(emailInput).toHaveAttribute("readonly");
     const codeInput = screen.getByLabelText("کد ارسال‌شده به ایمیل");
     await waitFor(() => expect(codeInput).toHaveFocus());
@@ -296,6 +292,30 @@ describe("AuthenticationModal", () => {
     await user.type(screen.getByLabelText("کد ارسال‌شده به ایمیل"), "{Backspace}");
     expect(screen.queryByText("کد واردشده درست نیست یا منقضی شده است.")).not.toBeInTheDocument();
     expect(screen.getByText("این رمز عبور بیش از حد رایج است. رمز دیگری انتخاب کنید.")).toBeInTheDocument();
+  });
+
+  it("marks the code boxes red when the code is rejected in the general message", async () => {
+    const { AxiosError } = await import("axios");
+    mocks.confirmEmailPasswordReset.mockRejectedValue(new AxiosError("x", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 400,
+      data: { detail: "Invalid or expired code." },
+      statusText: "",
+      headers: {},
+      config: {},
+    } as never));
+    const user = userEvent.setup();
+    renderModal({ initialView: "forgot" });
+
+    await user.type(screen.getByLabelText("ایمیل"), "learner@example.com");
+    await user.click(screen.getByRole("button", { name: "ارسال کد بازیابی" }));
+    const codeInput = await screen.findByLabelText("کد ارسال‌شده به ایمیل");
+    await user.type(codeInput, "123456");
+    await user.type(screen.getByLabelText("رمز عبور جدید"), "new-secret-password");
+    await user.click(screen.getByRole("button", { name: "تغییر رمز و ورود" }));
+
+    expect(await screen.findByText("کد واردشده درست نیست یا منقضی شده است.")).toBeInTheDocument();
+    expect(codeInput).toHaveAttribute("aria-invalid", "true");
+    expect(document.querySelectorAll("[data-invalid]")).toHaveLength(6);
   });
 
   it("returns to sign-in with the new password when signing in after the reset fails", async () => {

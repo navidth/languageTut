@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AboutSection from "@/components/landing/AboutSection";
-import FAQSection, { faqItems } from "@/components/landing/FAQSection";
+import FAQSection from "@/components/landing/FAQSection";
+import { faqItems } from "@/constants/landing";
 import HeroSplit from "@/components/landing/HeroSplit";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import LandingAuthCheck from "@/components/landing/LandingAuthCheck";
@@ -8,7 +9,6 @@ import PlacementTestSection from "@/components/landing/PlacementTestSection";
 import PromoStrip from "@/components/landing/PromoStrip";
 import TrustSection from "@/components/landing/TrustSection";
 import UserTypeSection from "@/components/landing/UserTypeSection";
-// import WhyUsSection from "@/components/landing/WhyUsSection";
 
 const title = "آموزش هوشمند زبان انگلیسی و تعیین سطح آنلاین";
 const description =
@@ -83,14 +83,12 @@ export default function HomePage() {
       />
       <HeroSplit />
       <UserTypeSection />
-      {/* <WhyUsSection /> */}
       <PlacementTestSection />
       <HowItWorksSection />
       <TrustSection />
       <AboutSection />
       <PromoStrip />
       <FAQSection />
-      {/* <FinalCTASection /> */}
     </LandingAuthCheck>
   );
 }
